@@ -1,7 +1,14 @@
-package = []
+[[package]]
+category = "main"
+description = "Fast, Extensible Progress Meter"
+name = "tqdm"
+optional = false
+python-versions = ">=2.6, !=3.0.*, !=3.1.*"
+version = "4.36.1"
 
 [metadata]
-content-hash = "a5fae1481abaad35b98a922fb1840e91acba826bec5ebd8aaa0323f5a8911210"
+content-hash = "960cba0b8ca37263bda0a050993bc3234c96beb28a365a2d719bec81225e509c"
 python-versions = "3.7.*"
 
 [metadata.hashes]
+tqdm = ["abc25d0ce2397d070ef07d8c7e706aede7920da163c64997585d42d3537ece3d", "dd3fcca8488bb1d416aa7469d2f277902f26260c45aa86b667b074cd44b3b115"]
