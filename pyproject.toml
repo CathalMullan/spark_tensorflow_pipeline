@@ -1,0 +1,15 @@
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
+
+[tool.poetry]
+name = "nlp_emails"
+version = "0.0.1"
+description = "Applying Natural Language Processing (NLP) techniques to categorize and summarize emails"
+authors = ["Cathal Mullan <cmullan@proofpoint.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.7.*"
+
+[tool.poetry.dev-dependencies]
