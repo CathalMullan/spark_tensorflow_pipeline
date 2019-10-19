@@ -1,9 +1,11 @@
 ## Custom ##
-# Python virtual environment
 venv/
 
-# Raw data
-data/raw/*
+!logs/.gitkeep
+logs/*
+
+!data/.gitkeep
+data/*
 
 ## Auto Generated ##
 # Created by https://www.gitignore.io/api/python,intellij+all

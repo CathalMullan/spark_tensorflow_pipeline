@@ -14,12 +14,12 @@ These emails will need to be scrubbed of any personally identifiable information
 
 This pipeline will consist of:
 * Categorization of emails into topics such as 'Announcements', 'Business', 'E-Commerce', 'Social Media', etc.
-* Identification of emails requiring a response, while identifying the degree of urgency required, such as high, normal 
+* Identification of emails requiring a response, while identifying the degree of urgency required, such as high, normal
 or low urgency.
 * Summarizing of emails to an optimal length while maintaining relevance to matter at hand.
- 
+
 An API will serve the trained model, so the application can be offered in real-time at the email scanning stage.
- 
+
 A basic email client GUI will be created to showcase the change in workflow when managing emails with this mined
 information.
 

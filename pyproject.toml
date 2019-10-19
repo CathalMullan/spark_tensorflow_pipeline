@@ -14,6 +14,18 @@ python = "3.7.*"
 tqdm = "^4.36"
 
 [tool.poetry.dev-dependencies]
+pre-commit = "1.18.2"
 
 [tool.poetry.scripts]
 download_enron = "nlp_emails.download.get_enron_dataset:get_dataset"
+
+[tool.black]
+line-length = 120
+target_version = ['py37']
+
+[tool.isort]
+line_length = 120
+multi_line_output = 3
+combine_as_imports = true
+include_trailing_comma = true
+known_third_party = ["requests", "tqdm"]
