@@ -12,12 +12,13 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "3.7.*"
 tqdm = "^4.36"
+requests = "^2.22"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
 
 [tool.poetry.scripts]
-download_enron = "nlp_emails.download.get_enron_dataset:get_dataset"
+get_enron_dataset = "nlp_emails.download.get_enron_dataset:get_enron_dataset"
 
 [tool.black]
 line-length = 120

@@ -73,7 +73,7 @@ def extract_tarfile() -> None:
     print("Finished extracting dataset.")
 
 
-def get_dataset() -> None:
+def get_enron_dataset() -> None:
     """
     Download and extract the Enron dataset.
 
@@ -84,7 +84,3 @@ def get_dataset() -> None:
 
     download_tarfile()
     extract_tarfile()
-
-
-if __name__ == "__main__":
-    get_dataset()
