@@ -16,6 +16,8 @@ requests = "^2.22"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
+pytest = "5.1.0"
+pytest-cov = "2.7.1"
 
 [tool.poetry.scripts]
 get_enron_dataset = "nlp_emails.download.get_enron_dataset:get_enron_dataset"

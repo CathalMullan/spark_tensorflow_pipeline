@@ -7,8 +7,14 @@ before_script:
 
 stages:
   - Lint
+  - Test
 
 lint:
   stage: Lint
   script:
     - make lint
+
+test:
+  stage: Test
+  script:
+    - make test

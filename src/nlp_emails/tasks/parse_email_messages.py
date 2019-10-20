@@ -1,5 +1,5 @@
 """
-Load the Enron dataset into MIME messages.
+Read all files in a directory recursively and parse to EmailMessages.
 """
 from email import message_from_file
 from email.errors import MessageDefect
@@ -7,18 +7,21 @@ from email.message import EmailMessage
 from email.policy import strict
 from multiprocessing import Pool
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from nlp_emails.helpers.directories import ENRON_DIR
 
 
-def list_files_in_folder(folder_path: Path) -> List[Path]:
+def list_files_in_folder(folder_path: Union[Path, str]) -> List[Path]:
     """
     List all files in a folder recursively.
 
     :param folder_path: starting point of search
     :return: list of paths to files
     """
+    if not isinstance(folder_path, Path):
+        folder_path = Path(folder_path)
+
     all_paths = list(folder_path.rglob(f"**/*"))
 
     # Strip non-files
@@ -48,7 +51,7 @@ def read_msg_file(eml_path: Path) -> Optional[EmailMessage]:
             return None
 
 
-def parse_email_messages(folder_path: Path = Path(f"{ENRON_DIR}/maildir")) -> List[EmailMessage]:
+def parse_email_messages(folder_path: str = f"{ENRON_DIR}/maildir") -> List[EmailMessage]:
     """
     Read all files in a directory recursively and parse to EmailMessages.
 
@@ -68,8 +71,12 @@ def parse_email_messages(folder_path: Path = Path(f"{ENRON_DIR}/maildir")) -> Li
     # file_paths = file_paths[:100_000]
 
     print(f"Total number of files in directory: {len(file_paths)}")
-    with Pool(processes=8) as pool:
+    pool = Pool(processes=8)
+    try:
         potential_messages: List[Optional[EmailMessage]] = pool.map(read_msg_file, file_paths)
+    finally:
+        pool.close()
+        pool.join()
 
     # Strip out mails which failed in parsing
     email_messages: List[EmailMessage] = [msg for msg in potential_messages if msg is not None]

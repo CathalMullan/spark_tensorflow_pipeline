@@ -10,3 +10,7 @@ hook:
 .PHONY: lint
 lint:
 	pre-commit run --all-files | tee logs/lint.log
+
+.PHONY: test
+test:
+	pytest tests/ | tee logs/test.log
