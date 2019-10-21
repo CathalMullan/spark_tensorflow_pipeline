@@ -102,5 +102,6 @@ repos:
         args: [
           --max-line-length=120,
           --jobs=8,
-          --disable=E0401
+          --disable=E0401,
+          --disable=R0902,
         ]

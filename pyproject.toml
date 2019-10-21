@@ -13,6 +13,10 @@ readme = "README.md"
 python = "3.7.*"
 tqdm = "^4.36"
 requests = "^2.22"
+validators = "^0.14.0"
+talon = "^1.4"
+bs4 = "^0.0.1"
+pycld3 = "^0.14.0"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
@@ -31,4 +35,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["requests", "tqdm"]
+known_third_party = ["bs4", "cld3", "pytest", "requests", "talon", "tqdm", "validators"]

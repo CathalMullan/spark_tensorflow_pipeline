@@ -1,7 +1,7 @@
 """
 Read all files in a directory recursively and parse to EmailMessages.
 """
-from email import message_from_file
+from email import message_from_file, message_from_string
 from email.errors import MessageDefect
 from email.message import EmailMessage
 from email.policy import strict
@@ -30,20 +30,30 @@ def list_files_in_folder(folder_path: Union[Path, str]) -> List[Path]:
     return file_paths
 
 
-def read_msg_file(eml_path: Path) -> Optional[EmailMessage]:
+def read_message_from_string(message_str: str) -> Optional[EmailMessage]:
     """
-    Open a msg file and read its contents, parses to EmailMessage.
+    Parse a string to an EmailMessage.
 
-    :param eml_path: Path to an eml file
+    :param message_str: eml file as a string
+    :return: parsed EmailMessage from string
+    """
+    # the policy 'strict' makes this return an EmailMessage class (Python 3.6+), rather than a Message class.
+    email_message: EmailMessage = message_from_string(message_str, policy=strict)  # type: ignore
+
+    return email_message
+
+
+def read_message_from_file(eml_path: Path) -> Optional[EmailMessage]:
+    """
+    Open a eml file and read its contents, parses to EmailMessage.
+
+    :param eml_path: path to an eml file
     :return: parsed EmailMessage from file
     """
     with eml_path.open(encoding="utf-8", errors="replace") as file:
         try:
             # the policy 'strict' makes this return an EmailMessage class (Python 3.6+), rather than a Message class.
             email_message: EmailMessage = message_from_file(file, policy=strict)  # type: ignore
-
-            # Include additional headers for debugging purposes
-            email_message.add_header("x-file-path", file.name)
 
             return email_message
         except MessageDefect:
@@ -73,13 +83,13 @@ def parse_email_messages(folder_path: str = f"{ENRON_DIR}/maildir") -> List[Emai
     print(f"Total number of files in directory: {len(file_paths)}")
     pool = Pool(processes=8)
     try:
-        potential_messages: List[Optional[EmailMessage]] = pool.map(read_msg_file, file_paths)
+        potential_messages: List[Optional[EmailMessage]] = pool.map(read_message_from_file, file_paths)
     finally:
         pool.close()
         pool.join()
 
     # Strip out mails which failed in parsing
-    email_messages: List[EmailMessage] = [msg for msg in potential_messages if msg is not None]
+    email_messages: List[EmailMessage] = [message for message in potential_messages if message is not None]
     print(f"Total number of eml files successfully parsed: {len(email_messages)}")
 
     return email_messages
