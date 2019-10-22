@@ -1,31 +1,13 @@
-###
-This should give a good overview of the problem to be solved.
-
-Goals and high-level requirements should be stated clearly.
-
-A description of a software / hardware development environment may be given.
-
-Verifiable criteria against which the success of the project is to be judged should be identified (e.g. features of the
-software and experimental results).
-
-You may state these as acceptance tests, if preferred.
-
-A Gantt chart or table which outlines the expected project development plan should be given (with major milestones and
-deliverable's highlighted).
-
-Appropriate references should be provided.
-
-Include the URL for the gitLab repo. (max: 4 pages)
-
 # Project Description and Work Plan
 
 ### Repository
 https://gitlab.eeecs.qub.ac.uk/40180175/nlp_emails
 
 ### Problem Statement
-Something along the lines of improving productivity etc.
-
-...
+Email management can take up a significant amount of times for individuals who find themselves bombarded with emails
+constantly. Attempting to identify which emails are worth opening and reading can be cumbersome. This project describes
+a number of machine learning models which can aid the management of emails, and improve general efficiency in a task
+many of us perform numerous times each day.
 
 ### Solution Description
 Creation of a pipeline to process bulk email files (.eml).
@@ -36,7 +18,7 @@ This pipeline will consist of:
 * Categorization of emails into topics such as 'Announcements', 'Business', 'E-Commerce', 'Social Media', etc.
 * Identification of emails requiring a response, while identifying the degree of urgency required, such as high, normal
 or low urgency.
-* Summarizing of emails to an optimal length while maintaining relevance to matter at hand.
+* Summarization of emails to an optimal length while maintaining relevance to matter at hand.
 
 An API will serve the trained model, so the application can be offered in real-time at the email scanning stage.
 
@@ -45,6 +27,7 @@ information.
 
 ### Overview of Core Technologies and Infrastructure
 * Apache Spark: Distributed parallel processing framework
+* Apache Beam: Execution engine agnostic processing workflow
 * Docker: Containerized builds.
 * Kubernetes: Orchestrate the infrastructure.
 * Kubernetes Operations (KOPS): Ease the creation of clusters.
@@ -152,23 +135,29 @@ Joseph, Legal, Corporate
 Steven, Bishop-Moore
 
 In addition, Victoria (Hughes Group), Cynthia (EE&CC), Erik (ENA),
-Michael (King, Hawkins and Kelley), and Jennifer (Mcfarland, Palmer and Cervantes) were active members of Garcia, Davis and Norris.
+Michael (King, Hawkins and Kelley), and Jennifer (Mcfarland, Palmer and Cervantes) were active members of Garcia, Davis
+and Norris.
 ```
 
 By no means is this a perfect solution, as spaCy has clearly missed some 'personal' data.
 But with the use of Faker, we can obscure the data with generated alternatives, making it far harder to identify an
 individual with this email.
-if the quality of the fakes were enriched, this effect would be amplified.
+if the quality of the fakes were enriched, this effect would be amplified. Faker seems to only concatenate names
+together and call this a valid company name, which isn't fantastic.
 
-Once we are happy with these mails (and they've been approved by Proofpoints data controller), we can store these in a
-separate S3 bucket. These are the emails which will be used to train the forthcoming models.
+Once we are happy with these mails, we can store these in a separate S3 bucket.
+These are the emails which will be used to train the forthcoming models.
 
 #### Acceptance Criteria
 * Quality:
-Approval by Proofpoints data controller on the legality side of things.
+Approval by Proofpoint's data controller on the legality side of things.
 
 * Efficiency:
-Minimum expectation is to be able to process a few million emails on a reasonably sized cluster (2-3 nodes) in less than an hour
+Minimum expectation is to be able to process a few million emails on a reasonably sized cluster (2-3 nodes) in less
+than an hour.
+
+* Code:
+Solid code coverage and tests.
 
 #### References
 N/A
@@ -181,7 +170,7 @@ Since we won't know the categories ahead of time, this will encompass topic dete
 Overall a popular topic within NLP, specifically around medical text and social media.
 
 * Likely to use the bag-of-words approach.
-* Will use unsupervised learning.
+* Will be unsupervised learning.
 * Dataset will simply be the email subject and body text.
 * Clustering keywords will be important.
 * Latent Dirichlet allocation (LDA) model seems the best fit.
@@ -204,8 +193,8 @@ Perhaps may be more suitable to supervised learning.
 In terms of the urgency detection, may end up being closer to sentiment analysis.
 More angry/upset mail means more urgent? (Only half joking)
 
-Reference [1] seems to approach this idea for social media with a focus on the found domains of the text, but this seems
-rather closer to marketability research and a measure of brands success on media platforms.
+Reference [1] seems to approach this idea for social media with a focus on the found domains of the text, but this
+seems closer to marketability research and a measure of brands success on media platforms than identification.
 
 Reference [2] is very much related to this projects goals. Further reading of this approach is necessary, but seems to
 rely on splitting email text into what it calls email zones. Requires identification and understanding of speech
@@ -218,7 +207,7 @@ TBD
 * [1] [Identifying Actionable Messages on Social Media](https://www.researchgate.net/publication/283532358_Identifying_Actionable_Messages_on_Social_Media)
 * [2] [Detecting Emails Containing Requests for Action](https://www.aclweb.org/anthology/N10-1142.pdf)
 
-### Summarizing of emails
+### Summarization of emails
 
 #### Overview
 Another more general goal of text modelling.
@@ -260,15 +249,27 @@ For example
 * Have flag for urgency - can view actionable mails only
 * Instead of showing a truncated version of the email body, show the summarized version when showcasing all mails.
 
-Attempt to emulate GMail viewing capabilities, but worth noting this will only be used to view mail, will not be a fully
-fledged email client.
+Attempt to emulate GMail viewing capabilities, but worth noting this will only be used to view mail, will not be a
+fully fledged email client.
 
 #### Acceptance Criteria
 TBD
 
 #### References
 N/A
-...
 
-### Gantt Chart
-...
+### Deadlines
+| Start | Length | Finish | Goal |
+| --- | --- | --- | --- |
+| 11/10/19 | 1 Week(s) | 25/10/19 | De-identification tool complete |
+| 25/10/19 | 2 Week(s) | 08/11/19 | Classification task working locally |
+| 08/11/19 | 1 Week(s) | 15/11/19 | Creation of packages for deployment |
+| 15/11/19 | 2 Week(s) | 29/11/19 | Scripts for automated creation of cluster |
+| 29/11/19 | 1 Week(s) | 06/11/19 | Manual working classification in a multi-node Spark cluster |
+| 06/11/19 | 1 Week(s) | 13/12/19 | Completion of interim report |
+| 13/12/19 | 2 Week(s) | 27/12/19 | Automated job execution using Airflow |
+| 27/12/19 | 2 Week(s) | 10/01/20 | Summarization task complete |
+| 10/01/20 | 3 Week(s) | 31/01/20 | Actionable task complete |
+| 31/01/20 | 2 Week(s) | 13/02/20 | Serving of models |
+| 13/02/20 | 3 Week(s) | 03/03/20 | Creation of React email client |
+| 03/04/20 | 3 Week(s) | 24/04/20 | Completion of dissertation and project
