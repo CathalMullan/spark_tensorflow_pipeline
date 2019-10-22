@@ -17,6 +17,7 @@ repos:
         entry: poetry check
         pass_filenames: false
         files: pyproject.toml
+        always_run: true
         additional_dependencies: [poetry]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
