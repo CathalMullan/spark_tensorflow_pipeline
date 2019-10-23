@@ -1,7 +1,8 @@
-# NLP Emails
+# Distributed NLP Emails
 
 ### Title
-Applying Natural Language Processing (NLP) techniques to categorize and summarize emails
+Applying Natural Language Processing (NLP) techniques to categorize, summarize, and identify actionable emails
+in a distributed fashion using Spark and TensorFlow
 
 ### Supervisor(s)
 * Machine Learning: Dr. Barry Devereux (b.devereux@qub.ac.uk)

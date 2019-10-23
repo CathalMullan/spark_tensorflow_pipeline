@@ -1,18 +1,26 @@
 # Project Description and Work Plan
 
 ### Repository
-https://gitlab.eeecs.qub.ac.uk/40180175/nlp_emails
+https://gitlab.eeecs.qub.ac.uk/40180175/distributed_nlp_emails
 
 ### Problem Statement
-Email management can take up a significant amount of times for individuals who find themselves bombarded with emails
-constantly. Attempting to identify which emails are worth opening and reading can be cumbersome. This project describes
-a number of machine learning models which can aid the management of emails, and improve general efficiency in a task
-many of us perform numerous times each day.
+Email management can take up a significant amount of times for individuals in the workplace, who often find themselves
+bombarded with emails constantly.
+Attempting to identify which emails are worth opening and reading can be cumbersome and slow.
+This project describes a number of machine learning models which can be used to aid the management of emails, and
+improve general efficiency of a task many of us are required to perform numerous times each day.
+
+#### References
+[1] [The social economy: Unlocking value and productivity through social technologies](https://www.mckinsey.com/industries/technology-media-and-telecommunications/our-insights/the-social-economy)
 
 ### Solution Description
 Creation of a pipeline to process bulk email files (.eml).
 
-These emails will need to be scrubbed of any personally identifiable information (PII) before being processed.
+These emails will be provided by Proofpoint, an email security company with whom I've been working for over the last
+year.
+All emails are required to be scrubbed of any personally identifiable information (PII) before being processed, in
+order to comply with regulations. All PII which is identified will either be removed or replaced with generated
+alternatives.
 
 This pipeline will consist of:
 * Categorization of emails into topics such as 'Announcements', 'Business', 'E-Commerce', 'Social Media', etc.
@@ -21,28 +29,31 @@ or low urgency.
 * Summarization of emails to an optimal length while maintaining relevance to matter at hand.
 
 An API will serve the trained model, so the application can be offered in real-time at the email scanning stage.
+The model may also be served directory in the browser.
 
 A basic email client GUI will be created to showcase the change in workflow when managing emails with this mined
 information.
 
 ### Overview of Core Technologies and Infrastructure
 * Apache Spark: Distributed parallel processing framework
-* Apache Beam: Execution engine agnostic processing workflow
 * Docker: Containerized builds.
-* Kubernetes: Orchestrate the infrastructure.
-* Kubernetes Operations (KOPS): Ease the creation of clusters.
+* Kubernetes: Orchestrator of containerized instances.
+* Kubernetes Operations (KOPS): Tool to ease the creation of clusters.
 * Amazon Web Services: Cloud computing facilitator of hardware.
-* Amazon Simple Storage Service: Distributed data store.
+* Apache Parquet: CSV like file-type will partitioning capabilities.
+* Google Snappy: Compression algorithm suitable for Parquet.
+* Amazon Simple Storage Service (S3): Distributed data store.
 * Terraform: Reproducible infrastructure as code.
-* Helm: Provision instances with packages.
-* Apache Airflow: Jobs scheduling and pipeline orchestration using directed acyclic graphs of execution.
+* Helm: Kubernetes application provisioning library.
+* Apache Airflow: Jobs scheduler and pipeline orchestrator through use of directed acyclic graphs (DAGs) of execution.
 * Jenkins: Enable continuous integration and continuous delivery.
-* TensorFlow: Machine learning library with emphasis on Deep Learning.
+* TensorFlow: Machine learning library with emphasis on Deep Learning (DL).
+* Horovod: Distributed DL framework compatible with TensorFlow and Spark.
 * React: JavaScript UI library.
 
-### Languages
-* Python - PySpark
-* TypeScript - React
+### Core Languages
+* Python
+* JavaScript/TypeScript
 
 ### De-identification tool
 
@@ -50,12 +61,8 @@ information.
 Using non-domain specific pre-trained models, create a pipeline to consume raw email files, identify personally
 identifiable information (PII) and replace this information with alternative 'fake' data.
 
-The emails will likely be coming from AWS S3, but I'm not ruling out potential usage of the Hadoop File System (HDFS)
-down the line. Apache Spark inherently uses Hadoop for file wrangling (specifically Apache Parquet files).
-
-The data will be streamed directly into the pipeline using Spark Streaming and it's text file stream capabilities.
-In terms of the scale of emails, my goal is to work at a scale equivalent to the daily amount of new emails ingested
-by Proofpoint (number to be determined).
+The emails will be sourced from S3.
+In terms of the amount of emails, my aim is to work in the multi-million scale.
 
 For entity recognition, I'll likely be using spaCy and one of it's pre-trained models, specifically the
 en_core_web_lg model, which has been trained using the OntoNotes corpus.
@@ -142,25 +149,20 @@ and Norris.
 By no means is this a perfect solution, as spaCy has clearly missed some 'personal' data.
 But with the use of Faker, we can obscure the data with generated alternatives, making it far harder to identify an
 individual with this email.
-if the quality of the fakes were enriched, this effect would be amplified. Faker seems to only concatenate names
+If the quality of the fakes were enriched, this effect would be amplified. Faker seems to only concatenate names
 together and call this a valid company name, which isn't fantastic.
 
-Once we are happy with these mails, we can store these in a separate S3 bucket.
+As part of the mail de-identification, the emails components will be parsed, and elements extracted.
+The output of the process will be an Apache Parquet file.
+
 These are the emails which will be used to train the forthcoming models.
 
 #### Acceptance Criteria
-* Quality:
-Approval by Proofpoint's data controller on the legality side of things.
-
-* Efficiency:
-Minimum expectation is to be able to process a few million emails on a reasonably sized cluster (2-3 nodes) in less
-than an hour.
-
-* Code:
-Solid code coverage and tests.
+* Approval by Proofpoint's data controller on the legality side of things.
 
 #### References
-N/A
+* [1] [spaCy Named Entity Recognition](https://spacy.io/usage/linguistic-features#named-entities)
+* [2] [Faker Providers](https://faker.readthedocs.io/en/master/providers.html)
 
 ### Categorization of emails
 
@@ -169,43 +171,30 @@ Standard classification of unstructured text into categories.
 Since we won't know the categories ahead of time, this will encompass topic detection as well.
 Overall a popular topic within NLP, specifically around medical text and social media.
 
-* Likely to use the bag-of-words approach.
-* Will be unsupervised learning.
-* Dataset will simply be the email subject and body text.
-* Clustering keywords will be important.
-* Latent Dirichlet allocation (LDA) model seems the best fit.
-
-The TensorFlow probability library looks useful for such work.
-
 #### Acceptance Criteria
 TBD
 
 #### References
 * [1] [Online Learning for Latent Dirichlet Allocation](https://papers.nips.cc/paper/3902-online-learning-for-latent-dirichlet-allocation.pdf)
+* [2] [Email Classification with Machine Learning and Word Embeddings for Improved Customer Support](http://www.diva-portal.org/smash/get/diva2:1189491/FULLTEXT01.pdf)
 
 ### Identification of actionable emails
 
 #### Overview
 More domain specific challenge and likely to be the trickiest.
-Work done on this topic for emails specifically, alongside social media text.
-Once identified, sort by priority/urgency.
-Perhaps may be more suitable to supervised learning.
-In terms of the urgency detection, may end up being closer to sentiment analysis.
-More angry/upset mail means more urgent? (Only half joking)
-
-Reference [1] seems to approach this idea for social media with a focus on the found domains of the text, but this
-seems closer to marketability research and a measure of brands success on media platforms than identification.
-
-Reference [2] is very much related to this projects goals. Further reading of this approach is necessary, but seems to
-rely on splitting email text into what it calls email zones. Requires identification and understanding of speech
-assertions and requests, and the syntactical difference between the two.
+Work done on this topic for emails specifically, intertwined with intent understanding in text.
+Once identified, attempt to sort by priority/urgency (low, normal, high).
+Perhaps the number of requests in text should be useful.
 
 #### Acceptance Criteria
 TBD
 
 #### References
-* [1] [Identifying Actionable Messages on Social Media](https://www.researchgate.net/publication/283532358_Identifying_Actionable_Messages_on_Social_Media)
-* [2] [Detecting Emails Containing Requests for Action](https://www.aclweb.org/anthology/N10-1142.pdf)
+* [1] [Detecting Emails Containing Requests for Action](https://www.aclweb.org/anthology/N10-1142.pdf)
+* [2] [Classifying Action Items for Semantic Email ](https://pdfs.semanticscholar.org/beed/b0bac9657fe61dd3910c411aa45b49e57f96.pdf)
+* [3] [Extracting Tasks from Emails: first challenges](https://medium.com/@rodrigo_23805/extracting-tasks-from-emails-first-challenges-86e7fbbf4672)
+* [4] [Context-Aware Intent Identification in Email Conversations](https://www.microsoft.com/en-us/research/uploads/prod/2019/05/Wang_SIGIR19.pdf)
+* [5] [Characterizing and Predicting Enterprise Email Reply Behavior](https://cseweb.ucsd.edu/classes/fa17/cse291-b/reading/sigir17a_email.pdf)
 
 ### Summarization of emails
 
@@ -220,6 +209,8 @@ TBD
 
 #### References
 * [1] [A Survey of Unstructured Text Summarization Techniques](https://pdfs.semanticscholar.org/9064/f2a72907bdc78116ff07f551a0b2302ebcfc.pdf)
+* [2] [Email Summarization-Extracting Main Content from the Mail](http://www.ijircce.com/upload/2015/october/141_Email.pdf)
+* [3] [Text Summarization Techniques: A Brief Survey](https://pdfs.semanticscholar.org/12a5/0024da4b1ad71ddab2fb68785dc56c2e540f.pdf)
 
 ### Model Serving
 
@@ -234,8 +225,13 @@ Likely being able to handle certain stress tests or benchmarking of requests.
 
 #### References
 * [1] [Serving Models](https://www.tensorflow.org/tfx/guide/serving)
-* [2] [TensorFlow.js is a library for machine learning in JavaScript](https://www.tensorflow.org/js)
-* [3] [TensorFlow On Spark](https://github.com/yahoo/TensorFlowOnSpark)
+* [2] [TensorFlow.js](https://www.tensorflow.org/js)
+* [3] [TensorFlow on Spark (Yahoo)](https://github.com/yahoo/TensorFlowOnSpark/blob/master/test/test_pipeline.py)
+* [3] [Horovod (Baidu + Uber initiative)](https://eng.uber.com/horovod/)
+* [4] [Petastorm](https://github.com/uber/petastorm)
+* [5] [Multi Worker Mirrored Strategy (Experimental)](https://www.tensorflow.org/guide/distributed_training#multiworkermirroredstrategy)
+* [6] [Horovod vs CARS in 2018](https://www.logicalclocks.com/blog/goodbye-horovod-hello-collectiveallreduce)
+* [7] [Deep learning with Horovod and Spark using GPUs and Docker containers](https://conferences.oreilly.com/artificial-intelligence/ai-eu/public/schedule/detail/78122)
 
 ### Email Client
 
