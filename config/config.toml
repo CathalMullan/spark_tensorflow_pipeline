@@ -1,0 +1,5 @@
+title = "Default config file"
+
+[message_extraction]
+do_content_tagging = true
+do_faker_replacement = true

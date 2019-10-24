@@ -3,7 +3,7 @@ Test - text_validation.py.
 """
 import pytest
 
-from nlp_emails.helpers.text_validation import ensure_language_english, strip_html_contents
+from nlp_emails.helpers.validation.text_validation import ensure_language_english, strip_html_contents
 
 SENTENCE = "Here is a string."
 ADDRESS = "123 Main St. Nashville, TN 37212"

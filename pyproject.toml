@@ -17,6 +17,9 @@ validators = "^0.14.0"
 talon = "^1.4"
 bs4 = "^0.0.1"
 pycld3 = "^0.14.0"
+faker = "^2.0"
+spacy = "^2.2"
+toml = "^0.10.0"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
@@ -25,6 +28,7 @@ pytest-cov = "2.7.1"
 
 [tool.poetry.scripts]
 get_enron_dataset = "nlp_emails.download.get_enron_dataset:get_enron_dataset"
+get_spacy_model = "nlp_emails.download.get_spacy_model:get_spacy_model"
 
 [tool.black]
 line-length = 120
@@ -35,4 +39,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["bs4", "cld3", "pytest", "requests", "talon", "tqdm", "validators"]
+known_third_party = ["bs4", "cld3", "faker", "pytest", "requests", "spacy", "talon", "toml", "tqdm", "validators"]

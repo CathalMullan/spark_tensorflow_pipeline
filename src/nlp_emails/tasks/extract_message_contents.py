@@ -5,7 +5,7 @@ import textwrap
 from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import EmailMessage
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Union
 
 from nlp_emails.tasks.message_body_extraction import get_message_body
 from nlp_emails.tasks.message_header_extraction import (
@@ -13,6 +13,7 @@ from nlp_emails.tasks.message_header_extraction import (
     get_message_address_list,
     get_message_date,
     get_message_message_id,
+    get_message_raw_headers,
     get_message_subject,
 )
 
@@ -23,7 +24,6 @@ class MessageContents:
     Select components and headers of a parsed EmailMessage.
     """
 
-    # Core Message Contents
     message_id: str = ""
     date: Optional[datetime] = None
     from_address: str = ""
@@ -135,30 +135,6 @@ class MessageContents:
             "subject": self.subject,
             "body": self.body,
         }
-
-
-def get_message_raw_headers(message: EmailMessage) -> Optional[Dict[str, str]]:
-    """
-    Extract the header keys and values from a email message.
-
-    Handle parsing errors that are common with individual headers.
-
-    :param message: a parsed EmailMessage
-    :return: optional dictionary of header keys and values
-    """
-    raw_headers: Dict[str, str] = {}
-
-    try:
-        header_list: List[Tuple[str, str]] = message.items()
-    except TypeError:
-        print(f"Header Error: Cannot parse header list")
-        return None
-
-    for header_key, header_value in header_list:
-        if header_key.lower() in ["message-id", "date", "from", "to", "cc", "bcc", "subject"]:
-            raw_headers[header_key.lower()] = str(header_value)
-
-    return dict(raw_headers)
 
 
 def extract_message_contents(message: EmailMessage) -> Optional[MessageContents]:

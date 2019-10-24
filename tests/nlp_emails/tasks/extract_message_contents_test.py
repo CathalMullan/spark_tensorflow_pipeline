@@ -6,7 +6,7 @@ from typing import Optional
 
 import pytest
 
-from nlp_emails.helpers.directories import TESTS_EMAIL_DIR
+from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR
 from nlp_emails.tasks.extract_message_contents import MessageContents, extract_message_contents
 from nlp_emails.tasks.parse_email_messages import parse_email_messages
 

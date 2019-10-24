@@ -2,12 +2,15 @@
 Functions to extract contents from message headers.
 """
 from datetime import datetime
+from email.message import EmailMessage
 from email.utils import make_msgid, mktime_tz, parsedate_tz
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from nlp_emails.helpers.address_validation import parse_address_str
-from nlp_emails.helpers.regex import SUBJECT_PREFIX
-from nlp_emails.helpers.text_validation import ensure_language_english
+from nlp_emails.helpers.anonymization.text_anonymizer import faker_generate_replacements, spacy_anonymize_text
+from nlp_emails.helpers.globals.config import CONFIG
+from nlp_emails.helpers.globals.regex import SUBJECT_PREFIX
+from nlp_emails.helpers.validation.address_validation import parse_address_str
+from nlp_emails.helpers.validation.text_validation import ensure_language_english
 
 
 def get_message_address(header_str: str) -> Optional[str]:
@@ -99,6 +102,17 @@ def get_message_subject(subject_header_str: str) -> Optional[str]:
     if not ensure_language_english(text=subject):
         return None
 
+    # Identify personal information
+    if CONFIG.get("message_extraction").get("do_content_tagging"):
+        subject = spacy_anonymize_text(subject)
+
+        # Anonymize personal information
+        if CONFIG.get("message_extraction").get("do_faker_replacement"):
+            subject = faker_generate_replacements(subject)
+
+    if not subject:
+        return None
+
     return subject
 
 
@@ -116,3 +130,27 @@ def get_message_message_id(message_id_str: str) -> str:
         message_id_str = make_msgid()
 
     return message_id_str
+
+
+def get_message_raw_headers(message: EmailMessage) -> Optional[Dict[str, str]]:
+    """
+    Extract the header keys and values from a email message.
+
+    Handle parsing errors that are common with individual headers.
+
+    :param message: a parsed EmailMessage
+    :return: optional dictionary of header keys and values
+    """
+    raw_headers: Dict[str, str] = {}
+
+    try:
+        header_list: List[Tuple[str, str]] = message.items()
+    except TypeError:
+        print(f"Header Error: Cannot parse header list")
+        return None
+
+    for header_key, header_value in header_list:
+        if header_key.lower() in ["message-id", "date", "from", "to", "cc", "bcc", "subject"]:
+            raw_headers[header_key.lower()] = str(header_value)
+
+    return dict(raw_headers)

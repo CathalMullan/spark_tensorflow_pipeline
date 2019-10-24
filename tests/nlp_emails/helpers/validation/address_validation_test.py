@@ -5,7 +5,7 @@ from typing import Optional
 
 import pytest
 
-from nlp_emails.helpers.address_validation import parse_address_str
+from nlp_emails.helpers.validation.address_validation import parse_address_str
 
 
 @pytest.mark.parametrize(

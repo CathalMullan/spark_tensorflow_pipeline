@@ -101,7 +101,7 @@ def test_get_message_date(date_header_str: Optional[str], valid_date: bool) -> N
         (None, False),
         ("", False),
         ("Re: Your job offer...", True),
-        ("Fwd:", True),
+        ("Fwd:", False),
         ("Dit is een Nederlandse verklaring", False),
     ],
 )

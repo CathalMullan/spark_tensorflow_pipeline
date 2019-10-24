@@ -6,7 +6,9 @@ from typing import Optional
 
 from talon import quotations
 
-from nlp_emails.helpers.text_validation import ensure_language_english, strip_html_contents
+from nlp_emails.helpers.anonymization.text_anonymizer import faker_generate_replacements, spacy_anonymize_text
+from nlp_emails.helpers.globals.config import CONFIG
+from nlp_emails.helpers.validation.text_validation import ensure_language_english, strip_html_contents
 
 
 def get_message_body(message: EmailMessage) -> Optional[str]:
@@ -54,10 +56,15 @@ def get_message_body(message: EmailMessage) -> Optional[str]:
     if not ensure_language_english(text=message_body):
         return None
 
-    # Avoid large emails which will clog up the pipeline or tiny emails which provide little benefit.
-    body_len = len(message_body)
-    if body_len > 10_000 or body_len < 200:
-        print(f"Body error: Body discarded due to length - {body_len}")
+    # Identify personal information
+    if CONFIG.get("message_extraction").get("do_content_tagging"):
+        message_body = spacy_anonymize_text(message_body)
+
+        # Anonymize personal information
+        if CONFIG.get("message_extraction").get("do_faker_replacement"):
+            message_body = faker_generate_replacements(message_body)
+
+    if not message_body:
         return None
 
     return message_body

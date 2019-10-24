@@ -9,7 +9,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional, Union
 
-from nlp_emails.helpers.directories import ENRON_DIR
+from nlp_emails.helpers.globals.directories import ENRON_DIR
 
 
 def list_files_in_folder(folder_path: Union[Path, str]) -> List[Path]:
