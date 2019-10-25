@@ -138,51 +138,33 @@ def test_message_contents_validate(message_contents: MessageContent, is_valid: b
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_to_address_str(message_contents: MessageContent) -> None:
+def test_message_contents_address_list_to_str(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 
     :param message_contents: an instance of MessageContents
     :return: None
     """
-    to_address_str: Optional[str] = message_contents.to_address_str
-
+    to_address_str: Optional[str] = message_contents.address_list_to_str("to_address_list")
     if to_address_str:
         assert isinstance(to_address_str, str)
     else:
         assert to_address_str is None
 
-
-@pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_cc_address_str(message_contents: MessageContent) -> None:
-    """
-    Ensure MessageContents attribute functions correctly.
-
-    :param message_contents: an instance of MessageContents
-    :return: None
-    """
-    cc_address_str: Optional[str] = message_contents.cc_address_str
-
+    cc_address_str: Optional[str] = message_contents.address_list_to_str("cc_address_list")
     if cc_address_str:
         assert isinstance(cc_address_str, str)
     else:
         assert cc_address_str is None
 
-
-@pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_bcc_address_str(message_contents: MessageContent) -> None:
-    """
-    Ensure MessageContents attribute functions correctly.
-
-    :param message_contents: an instance of MessageContents
-    :return: None
-    """
-    bcc_address_str: Optional[str] = message_contents.bcc_address_str
-
+    bcc_address_str: Optional[str] = message_contents.address_list_to_str("bcc_address_list")
     if bcc_address_str:
         assert isinstance(bcc_address_str, str)
     else:
         assert bcc_address_str is None
+
+    other_address_str: Optional[str] = message_contents.address_list_to_str("other_address_str")
+    assert other_address_str is None
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)

@@ -14,3 +14,8 @@ lint:
 .PHONY: test
 test:
 	pytest tests/ | tee logs/test.log
+
+.PHONY: validate
+validate:
+	make lint
+	make test

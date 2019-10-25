@@ -35,41 +35,21 @@ class MessageContent:
     subject: str = ""
     body: str = ""
 
-    @property
-    def to_address_str(self) -> Optional[str]:
+    def address_list_to_str(self, address_list: str) -> Optional[str]:
         """
-        Concatenate to_address_list into a comma separated list.
+        Concatenate address list into a comma separated list.
 
         :return: string representation of to_address_list
         """
-        if not self.to_address_list or all(address == "" for address in self.to_address_list):
+        if address_list not in ("to_address_list", "cc_address_list", "bcc_address_list"):
             return None
 
-        return ", ".join(self.to_address_list).strip()
+        address_list_variable = self.__getattribute__(address_list)
 
-    @property
-    def cc_address_str(self) -> Optional[str]:
-        """
-        Concatenate cc_address_list into a comma separated list.
-
-        :return: string representation of cc_address_list
-        """
-        if not self.cc_address_list or all(address == "" for address in self.cc_address_list):
+        if not address_list_variable or all(address == "" for address in address_list_variable):
             return None
 
-        return ", ".join(self.cc_address_list).strip()
-
-    @property
-    def bcc_address_str(self) -> Optional[str]:
-        """
-        Concatenate bcc_address_list into a comma separated list.
-
-        :return: string representation of bcc_address_list
-        """
-        if not self.bcc_address_list or all(address == "" for address in self.bcc_address_list):
-            return None
-
-        return ", ".join(self.bcc_address_list).strip()
+        return ", ".join(address_list_variable).strip()
 
     def validate(self) -> bool:
         """
@@ -109,9 +89,9 @@ class MessageContent:
             Message-Id: {self.message_id}
             Date: {self.date}
             From: {self.from_address}
-            To: {self.to_address_str}
-            Cc: {self.cc_address_str}
-            Bcc: {self.bcc_address_str}
+            To: {self.address_list_to_str('to_address_list')}
+            Cc: {self.address_list_to_str('cc_address_list')}
+            Bcc: {self.address_list_to_str('bcc_address_list')}
             Subject: {self.subject}
 
             {self.body}
@@ -131,9 +111,9 @@ class MessageContent:
             "message_id": self.message_id,
             "date": self.date,
             "from_address": self.from_address,
-            "to_address": self.to_address_str,
-            "cc_address": self.cc_address_str,
-            "bcc_address_list": self.bcc_address_str,
+            "to_address": self.address_list_to_str("to_address_list"),
+            "cc_address": self.address_list_to_str("cc_address_list"),
+            "bcc_address_list": self.address_list_to_str("bcc_address_list"),
             "subject": self.subject,
             "body": self.body,
         }
