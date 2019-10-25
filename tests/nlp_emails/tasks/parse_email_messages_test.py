@@ -8,12 +8,7 @@ from typing import List, Optional
 import pytest
 
 from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR
-from nlp_emails.tasks.parse_email_messages import (
-    list_files_in_folder,
-    parse_email_messages,
-    read_message_from_file,
-    read_message_from_string,
-)
+from nlp_emails.tasks.parse_email_messages import list_files_in_folder, read_message_from_file, read_message_from_string
 
 VALID_EML_STR = """
 Mime-Version: 1.0 (Apple Message framework v730)
@@ -88,16 +83,4 @@ def test_read_message_from_string(message_str: str) -> None:
     email_message: Optional[EmailMessage] = read_message_from_string(message_str=message_str)
 
     if email_message:
-        assert isinstance(email_message, EmailMessage)
-
-
-def test_parse_email_messages() -> None:
-    """
-    Ensure parsing can handle different charsets/faulty emails.
-
-    :return: None
-    """
-    email_messages = parse_email_messages(folder_path=TESTS_EMAIL_DIR)
-
-    for email_message in email_messages:
         assert isinstance(email_message, EmailMessage)

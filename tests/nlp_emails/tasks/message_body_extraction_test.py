@@ -8,10 +8,10 @@ import pytest
 
 from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR
 from nlp_emails.tasks.message_body_extraction import get_message_body
-from nlp_emails.tasks.parse_email_messages import parse_email_messages
+from nlp_emails.tasks.parse_email_messages import read_messages_from_directory
 
 
-@pytest.mark.parametrize("message", parse_email_messages(folder_path=TESTS_EMAIL_DIR))
+@pytest.mark.parametrize("message", read_messages_from_directory(TESTS_EMAIL_DIR))
 def test_get_message_body(message: EmailMessage) -> None:
     """
     Ensure we can extract the body of an array of email messages.

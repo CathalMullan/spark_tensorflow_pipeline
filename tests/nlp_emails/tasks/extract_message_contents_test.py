@@ -2,15 +2,20 @@
 Test - extract_message_contents.py.
 """
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Optional
 
 import pytest
 
 from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR
-from nlp_emails.tasks.extract_message_contents import MessageContents, extract_message_contents
-from nlp_emails.tasks.parse_email_messages import parse_email_messages
+from nlp_emails.tasks.extract_message_contents import (
+    MessageContent,
+    eml_path_to_message_contents,
+    extract_message_contents,
+)
+from nlp_emails.tasks.parse_email_messages import list_files_in_folder, read_messages_from_directory
 
-VALID_CONTENTS = MessageContents(
+VALID_CONTENTS = MessageContent(
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -21,7 +26,7 @@ VALID_CONTENTS = MessageContents(
     body="Here is a valid body",
 )
 
-INVALID_CONTENTS_NO_FROM = MessageContents(
+INVALID_CONTENTS_NO_FROM = MessageContent(
     message_id="hello@world.com",
     date=None,
     from_address="",
@@ -32,7 +37,7 @@ INVALID_CONTENTS_NO_FROM = MessageContents(
     body="Here is a valid body",
 )
 
-INVALID_CONTENTS_NO_TO = MessageContents(
+INVALID_CONTENTS_NO_TO = MessageContent(
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -43,7 +48,7 @@ INVALID_CONTENTS_NO_TO = MessageContents(
     body="Here is a valid body",
 )
 
-INVALID_CONTENTS_NO_BODY = MessageContents(
+INVALID_CONTENTS_NO_BODY = MessageContent(
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -54,7 +59,7 @@ INVALID_CONTENTS_NO_BODY = MessageContents(
     body="",
 )
 
-INVALID_CONTENTS_NO_MESSAGE_ID = MessageContents(
+INVALID_CONTENTS_NO_MESSAGE_ID = MessageContent(
     message_id="",
     date=None,
     from_address="valid@email_1.com",
@@ -74,7 +79,7 @@ ALL_CONTENTS = [
 ]
 
 
-@pytest.mark.parametrize("message", parse_email_messages(folder_path=TESTS_EMAIL_DIR))
+@pytest.mark.parametrize("message", read_messages_from_directory(TESTS_EMAIL_DIR))
 def test_parse_message_to_dict(message: EmailMessage) -> None:
     """
     Test if email messages with a number of faults can be parsed to message contents.
@@ -82,10 +87,26 @@ def test_parse_message_to_dict(message: EmailMessage) -> None:
     :param message: a parsed EmailMessage
     :return: None
     """
-    message_contents: Optional[MessageContents] = extract_message_contents(message=message)
+    message_contents: Optional[MessageContent] = extract_message_contents(message=message)
 
     if message_contents:
-        assert isinstance(message_contents, MessageContents)
+        assert isinstance(message_contents, MessageContent)
+    else:
+        assert message_contents is None
+
+
+@pytest.mark.parametrize("eml_path", list_files_in_folder(TESTS_EMAIL_DIR))
+def test_eml_path_to_message_contents(eml_path: Path) -> None:
+    """
+    Test if email messages with a number of faults can be parsed to message contents from a path.
+
+    :param eml_path: path to eml file
+    :return: None
+    """
+    message_contents: Optional[MessageContent] = eml_path_to_message_contents(eml_path=eml_path)
+
+    if message_contents:
+        assert isinstance(message_contents, MessageContent)
     else:
         assert message_contents is None
 
@@ -100,7 +121,7 @@ def test_parse_message_to_dict(message: EmailMessage) -> None:
         (INVALID_CONTENTS_NO_MESSAGE_ID, False),
     ],
 )
-def test_message_contents_validate(message_contents: MessageContents, is_valid: bool) -> None:
+def test_message_contents_validate(message_contents: MessageContent, is_valid: bool) -> None:
     """
     Test our validation around message contents. Specify the lack of/empty from, to, message-id headers and the body.
 
@@ -117,7 +138,7 @@ def test_message_contents_validate(message_contents: MessageContents, is_valid: 
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_to_address_str(message_contents: MessageContents) -> None:
+def test_message_contents_to_address_str(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 
@@ -133,7 +154,7 @@ def test_message_contents_to_address_str(message_contents: MessageContents) -> N
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_cc_address_str(message_contents: MessageContents) -> None:
+def test_message_contents_cc_address_str(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 
@@ -149,7 +170,7 @@ def test_message_contents_cc_address_str(message_contents: MessageContents) -> N
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_bcc_address_str(message_contents: MessageContents) -> None:
+def test_message_contents_bcc_address_str(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 
@@ -165,7 +186,7 @@ def test_message_contents_bcc_address_str(message_contents: MessageContents) -> 
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_as_str(message_contents: MessageContents) -> None:
+def test_message_contents_as_str(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 
@@ -181,7 +202,7 @@ def test_message_contents_as_str(message_contents: MessageContents) -> None:
 
 
 @pytest.mark.parametrize("message_contents", ALL_CONTENTS)
-def test_message_contents_as_dict(message_contents: MessageContents) -> None:
+def test_message_contents_as_dict(message_contents: MessageContent) -> None:
     """
     Ensure MessageContents attribute functions correctly.
 

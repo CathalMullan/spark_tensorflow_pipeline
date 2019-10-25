@@ -5,11 +5,8 @@ from email import message_from_file, message_from_string
 from email.errors import MessageDefect
 from email.message import EmailMessage
 from email.policy import strict
-from multiprocessing import Pool
 from pathlib import Path
 from typing import List, Optional, Union
-
-from nlp_emails.helpers.globals.directories import ENRON_DIR
 
 
 def list_files_in_folder(folder_path: Union[Path, str]) -> List[Path]:
@@ -61,35 +58,18 @@ def read_message_from_file(eml_path: Path) -> Optional[EmailMessage]:
             return None
 
 
-def parse_email_messages(folder_path: str = f"{ENRON_DIR}/maildir") -> List[EmailMessage]:
+def read_messages_from_directory(directory_path: Union[Path, str]) -> List[EmailMessage]:
     """
-    Read all files in a directory recursively and parse to EmailMessages.
+    Read in eml files as email messages from a directory.
 
-    NOTE: Default is to read from the Enron dataset, which contain over 500,000 eml files.
-
-    :param folder_path: folder containing eml files
-    :return: list of parsed email messages from file contents
+    :param directory_path: path to a directory containing eml file
+    :return: list of email messages
     """
-    file_paths: List[Path] = list_files_in_folder(folder_path)
+    email_messages: List[EmailMessage] = []
 
-    # DEBUG - Sort files like Unix filesystem
-    # str_paths: List[str] = [str(path) for path in file_paths]
-    # str_paths.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
-
-    # DEBUG - Limit number of files processed
-    # file_paths = [Path(path) for path in str_paths]
-    # file_paths = file_paths[:100_000]
-
-    print(f"Total number of files in directory: {len(file_paths)}")
-    pool = Pool(processes=8)
-    try:
-        potential_messages: List[Optional[EmailMessage]] = pool.map(read_message_from_file, file_paths)
-    finally:
-        pool.close()
-        pool.join()
-
-    # Strip out mails which failed in parsing
-    email_messages: List[EmailMessage] = [message for message in potential_messages if message is not None]
-    print(f"Total number of eml files successfully parsed: {len(email_messages)}")
+    for file_path in list_files_in_folder(directory_path):
+        potential_message: Optional[EmailMessage] = read_message_from_file(file_path)
+        if potential_message:
+            email_messages.append(potential_message)
 
     return email_messages

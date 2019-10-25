@@ -5,6 +5,7 @@ import textwrap
 from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from nlp_emails.tasks.message_body_extraction import get_message_body
@@ -16,10 +17,11 @@ from nlp_emails.tasks.message_header_extraction import (
     get_message_raw_headers,
     get_message_subject,
 )
+from nlp_emails.tasks.parse_email_messages import read_message_from_file
 
 
 @dataclass
-class MessageContents:
+class MessageContent:
     """
     Select components and headers of a parsed EmailMessage.
     """
@@ -114,7 +116,7 @@ class MessageContents:
 
             {self.body}
             """
-        )
+        ).strip()
 
     def as_dict(self) -> Optional[Dict[str, Union[Optional[str], Optional[datetime]]]]:
         """
@@ -137,14 +139,14 @@ class MessageContents:
         }
 
 
-def extract_message_contents(message: EmailMessage) -> Optional[MessageContents]:
+def extract_message_contents(message: EmailMessage) -> Optional[MessageContent]:
     """
     Extract fields from a message to a dict of contents.
 
     :param message: a parsed EmailMessage
-    :return: optional parsed fields in a dict
+    :return: optional parsed message content
     """
-    message_contents = MessageContents()
+    message_contents = MessageContent()
 
     raw_headers: Optional[Dict[str, str]] = get_message_raw_headers(message=message)
     if not raw_headers:
@@ -162,6 +164,24 @@ def extract_message_contents(message: EmailMessage) -> Optional[MessageContents]
     message_contents.body = get_message_body(message=message)
 
     if not message_contents.validate():
+        return None
+
+    return message_contents
+
+
+def eml_path_to_message_contents(eml_path: Path) -> Optional[MessageContent]:
+    """
+    Read eml file and convert to message content.
+
+    :param eml_path: path to an eml file
+    :return: optional message content
+    """
+    email_message: Optional[EmailMessage] = read_message_from_file(eml_path)
+    if not isinstance(email_message, EmailMessage):
+        return None
+
+    message_contents: Optional[MessageContent] = extract_message_contents(email_message)
+    if not isinstance(message_contents, MessageContent):
         return None
 
     return message_contents
