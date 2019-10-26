@@ -19,3 +19,11 @@ test:
 validate:
 	make lint | tee logs/validate.log
 	make test | tee -a logs/validate.log
+
+.PHONY: enron
+enron:
+	get_enron_dataset
+
+.PHONY: spacy
+spacy:
+	get_spacy_model

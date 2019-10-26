@@ -8,13 +8,13 @@ from typing import Optional
 import requests
 from tqdm import tqdm
 
-from nlp_emails.helpers.globals.directories import ENRON_DIR
+from nlp_emails.helpers.globals.directories import ENRON_DIR, list_files_in_folder
 
 DOWNLOAD_LINK = "http://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz"
 
 ENRON_ZIP_FILE = ENRON_DIR + "/enron_dataset.tar.gz"
 ENRON_ZIP_FILE_SIZE = 443254787
-ENRON_FILE_COUNT = 520902
+ENRON_FILE_COUNT = 517403
 
 
 def download_tarfile() -> None:
@@ -54,11 +54,7 @@ def extract_tarfile() -> None:
 
     :return: None
     """
-    files = Path(ENRON_DIR).glob("**/*")
-
-    size = 0
-    for _ in files:
-        size += 1
+    size = len(list_files_in_folder(ENRON_DIR))
 
     if size == ENRON_FILE_COUNT:
         print("All files already extracted.")
