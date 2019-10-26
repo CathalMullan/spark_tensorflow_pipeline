@@ -89,15 +89,17 @@ def faker_generate_replacements(text: str) -> str:
     """
     Replace tags in text with generated fake data.
 
-    :param text:
-    :return:
+    :param text: text with spaCy tags
+    :return: text with Faker generated replacements for spaCy tags
     """
     parsed_text = SPACY_TAGGER(text, disable=["parser", "tagger", "ner"])
-    text_tokens = [token.text for token in parsed_text]
 
+    text_tokens = [token.text for token in parsed_text]
     spacy_tags = list(FAKER_DICT.keys())
-    for tag in spacy_tags:
-        if tag in text_tokens:
-            text = text.replace(tag, FAKER_DICT[tag](), 1)
+
+    for token in text_tokens:
+        for key in spacy_tags:
+            if key in token:
+                text = text.replace(token, FAKER_DICT[key](), 1)
 
     return text

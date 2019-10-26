@@ -6,11 +6,10 @@ from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import List, Optional
 
-from nlp_emails.helpers.globals.directories import ENRON_DIR
-from nlp_emails.helpers.output.convert_to_eml import convert_to_eml
-from nlp_emails.helpers.output.convert_to_parquet import convert_to_parquet
+from nlp_emails.helpers.globals.directories import ENRON_DIR, list_files_in_folder
+from nlp_emails.helpers.output.output_eml import output_eml
+from nlp_emails.helpers.output.output_parquet import output_parquet
 from nlp_emails.tasks.extract_message_contents import MessageContent, eml_path_to_message_contents
-from nlp_emails.tasks.parse_email_messages import list_files_in_folder
 
 
 def enron_pipeline() -> None:
@@ -27,7 +26,14 @@ def enron_pipeline() -> None:
     """
     file_paths: List[Path] = list_files_in_folder(f"{ENRON_DIR}/maildir")
 
-    print("Start")
+    # DEBUG - Limit number of files processed
+    file_paths = file_paths[:10]
+
+    # DEBUG - Sort files like Unix filesystem
+    str_paths: List[str] = [str(path) for path in file_paths]
+    str_paths.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
+    file_paths = [Path(path) for path in str_paths]
+
     start_time: int = int(time.time())
 
     pool = Pool(processes=8)
@@ -39,8 +45,8 @@ def enron_pipeline() -> None:
 
     message_contents: List[MessageContent] = [message for message in optional_message_contents if message]
 
-    convert_to_eml(message_contents)
-    convert_to_parquet(message_contents)
+    output_eml(message_contents, append_original=True)
+    output_parquet(message_contents)
 
     print(f"Count: {len(message_contents)}")
     print(f"Finish: {int(time.time()) - start_time} seconds", flush=True)

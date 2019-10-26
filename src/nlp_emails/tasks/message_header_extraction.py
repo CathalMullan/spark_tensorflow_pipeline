@@ -2,12 +2,14 @@
 Functions to extract contents from message headers.
 """
 from datetime import datetime
+from email.header import decode_header
 from email.message import EmailMessage
-from email.utils import make_msgid, mktime_tz, parsedate_tz
+from email.utils import make_msgid, mktime_tz, parsedate_tz, unquote
+from encodings.aliases import aliases
 from typing import Dict, List, Optional, Tuple
 
 from nlp_emails.helpers.anonymization.text_anonymizer import faker_generate_replacements, spacy_anonymize_text
-from nlp_emails.helpers.globals.config import CONFIG
+from nlp_emails.helpers.config.get_config import CONFIG
 from nlp_emails.helpers.globals.regex import SUBJECT_PREFIX
 from nlp_emails.helpers.validation.address_validation import parse_address_str
 from nlp_emails.helpers.validation.text_validation import ensure_language_english
@@ -110,9 +112,6 @@ def get_message_subject(subject_header_str: str) -> Optional[str]:
         if CONFIG.get("message_extraction").get("do_faker_replacement"):
             subject = faker_generate_replacements(subject)
 
-    if not subject:
-        return None
-
     return subject
 
 
@@ -129,7 +128,8 @@ def get_message_message_id(message_id_str: str) -> str:
     if not message_id_str:
         message_id_str = make_msgid()
 
-    return message_id_str
+    clean_message_id = unquote(message_id_str)
+    return clean_message_id
 
 
 def get_message_raw_headers(message: EmailMessage) -> Optional[Dict[str, str]]:
@@ -143,14 +143,42 @@ def get_message_raw_headers(message: EmailMessage) -> Optional[Dict[str, str]]:
     """
     raw_headers: Dict[str, str] = {}
 
-    try:
-        header_list: List[Tuple[str, str]] = message.items()
-    except TypeError:
-        print(f"Header Error: Cannot parse header list")
-        return None
+    # Access raw headers, using items() can hang due to invalid charsets.
+    header_list: List[Tuple[str, str]] = list(message.raw_items())  # type: ignore
 
     for header_key, header_value in header_list:
-        if header_key.lower() in ["message-id", "date", "from", "to", "cc", "bcc", "subject"]:
-            raw_headers[header_key.lower()] = str(header_value)
+        if header_key.lower() in ["message-id", "date", "from", "to", "cc", "bcc", "subject", "original-path"]:
+            header_string: str = parse_header_value(header_value=header_value)
+            raw_headers[header_key.lower()] = header_string
 
-    return dict(raw_headers)
+    all_headers = dict(raw_headers)
+
+    # Ensure headers list contains 'To', 'From' and 'Subject'
+    if not all(header in all_headers.keys() for header in ["to", "from", "subject"]):
+        return None
+
+    return all_headers
+
+
+def parse_header_value(header_value: str) -> str:
+    """
+    Email header to be parsed and decoded to string.
+
+    :param header_value: header value as string
+    :return: parsed decoded header value
+    """
+    for value, charset in decode_header(header_value):
+        if charset:
+            # Check charset is a valid Python charset
+            clean_charset = charset.replace("-", "_")
+            if clean_charset and clean_charset in aliases.keys():
+                try:
+                    return str(value, clean_charset)
+                except UnicodeDecodeError:
+                    continue
+        else:
+            # Convert bytes to string
+            if isinstance(value, bytes):
+                return value.decode()
+
+    return str(header_value)

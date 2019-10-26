@@ -1,13 +1,13 @@
 """
 Extract headers and body from email message.
 """
-import textwrap
 from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
+from nlp_emails.helpers.input.input_eml import read_message_from_file
 from nlp_emails.tasks.message_body_extraction import get_message_body
 from nlp_emails.tasks.message_header_extraction import (
     get_message_address,
@@ -17,7 +17,6 @@ from nlp_emails.tasks.message_header_extraction import (
     get_message_raw_headers,
     get_message_subject,
 )
-from nlp_emails.tasks.parse_email_messages import read_message_from_file
 
 
 @dataclass
@@ -26,6 +25,8 @@ class MessageContent:
     Select components and headers of a parsed EmailMessage.
     """
 
+    original_message: EmailMessage
+    original_path: Optional[str] = None
     message_id: str = ""
     date: Optional[datetime] = None
     from_address: str = ""
@@ -34,22 +35,6 @@ class MessageContent:
     bcc_address_list: Optional[List[str]] = None
     subject: str = ""
     body: str = ""
-
-    def address_list_to_str(self, address_list: str) -> Optional[str]:
-        """
-        Concatenate address list into a comma separated list.
-
-        :return: string representation of to_address_list
-        """
-        if address_list not in ("to_address_list", "cc_address_list", "bcc_address_list"):
-            return None
-
-        address_list_variable = self.__getattribute__(address_list)
-
-        if not address_list_variable or all(address == "" for address in address_list_variable):
-            return None
-
-        return ", ".join(address_list_variable).strip()
 
     def validate(self) -> bool:
         """
@@ -75,28 +60,39 @@ class MessageContent:
 
         return True
 
+    def address_list_to_str(self, address_list: str) -> Optional[str]:
+        """
+        Concatenate address list into a comma separated list.
+
+        :return: string representation of to_address_list
+        """
+        if address_list not in ("to_address_list", "cc_address_list", "bcc_address_list"):
+            return None
+
+        address_list_variable = self.__getattribute__(address_list)
+
+        if not address_list_variable or all(address == "" for address in address_list_variable):
+            return ""
+
+        return ", ".join(address_list_variable).strip()
+
     def as_str(self) -> Optional[str]:
         """
         Convert MessageContents instance into an eml like string.
 
         :return: eml file of message
         """
-        if not self.validate():
-            return None
+        return f"""
+Message-Id: {self.message_id}
+Date: {self.date}
+From: {self.from_address}
+To: {self.address_list_to_str('to_address_list')}
+Cc: {self.address_list_to_str('cc_address_list')}
+Bcc: {self.address_list_to_str('bcc_address_list')}
+Subject: {self.subject}
 
-        return textwrap.dedent(
-            f"""
-            Message-Id: {self.message_id}
-            Date: {self.date}
-            From: {self.from_address}
-            To: {self.address_list_to_str('to_address_list')}
-            Cc: {self.address_list_to_str('cc_address_list')}
-            Bcc: {self.address_list_to_str('bcc_address_list')}
-            Subject: {self.subject}
-
-            {self.body}
-            """
-        ).strip()
+{self.body}
+""".strip()
 
     def as_dict(self) -> Optional[Dict[str, Union[Optional[str], Optional[datetime]]]]:
         """
@@ -104,9 +100,6 @@ class MessageContent:
 
         :return: dict of contents
         """
-        if not self.validate():
-            return None
-
         return {
             "message_id": self.message_id,
             "date": self.date,
@@ -126,12 +119,13 @@ def extract_message_contents(message: EmailMessage) -> Optional[MessageContent]:
     :param message: a parsed EmailMessage
     :return: optional parsed message content
     """
-    message_contents = MessageContent()
+    message_contents = MessageContent(original_message=message)
 
     raw_headers: Optional[Dict[str, str]] = get_message_raw_headers(message=message)
     if not raw_headers:
         return None
 
+    message_contents.original_path = raw_headers.get("original-path")
     message_contents.message_id = get_message_message_id(message_id_str=raw_headers.get("message-id"))
     message_contents.date = get_message_date(date_header_str=raw_headers.get("date"))
 

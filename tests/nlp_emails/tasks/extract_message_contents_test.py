@@ -7,15 +7,16 @@ from typing import Optional
 
 import pytest
 
-from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR
+from nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR, list_files_in_folder
+from nlp_emails.helpers.input.input_eml import read_messages_from_directory
 from nlp_emails.tasks.extract_message_contents import (
     MessageContent,
     eml_path_to_message_contents,
     extract_message_contents,
 )
-from nlp_emails.tasks.parse_email_messages import list_files_in_folder, read_messages_from_directory
 
 VALID_CONTENTS = MessageContent(
+    original_message=EmailMessage(),
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -27,6 +28,7 @@ VALID_CONTENTS = MessageContent(
 )
 
 INVALID_CONTENTS_NO_FROM = MessageContent(
+    original_message=EmailMessage(),
     message_id="hello@world.com",
     date=None,
     from_address="",
@@ -38,6 +40,7 @@ INVALID_CONTENTS_NO_FROM = MessageContent(
 )
 
 INVALID_CONTENTS_NO_TO = MessageContent(
+    original_message=EmailMessage(),
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -49,6 +52,7 @@ INVALID_CONTENTS_NO_TO = MessageContent(
 )
 
 INVALID_CONTENTS_NO_BODY = MessageContent(
+    original_message=EmailMessage(),
     message_id="hello@world.com",
     date=None,
     from_address="valid@email_1.com",
@@ -60,6 +64,7 @@ INVALID_CONTENTS_NO_BODY = MessageContent(
 )
 
 INVALID_CONTENTS_NO_MESSAGE_ID = MessageContent(
+    original_message=EmailMessage(),
     message_id="",
     date=None,
     from_address="valid@email_1.com",
@@ -146,19 +151,19 @@ def test_message_contents_address_list_to_str(message_contents: MessageContent) 
     :return: None
     """
     to_address_str: Optional[str] = message_contents.address_list_to_str("to_address_list")
-    if to_address_str:
+    if to_address_str or to_address_str == "":
         assert isinstance(to_address_str, str)
     else:
         assert to_address_str is None
 
     cc_address_str: Optional[str] = message_contents.address_list_to_str("cc_address_list")
-    if cc_address_str:
+    if cc_address_str or cc_address_str == "":
         assert isinstance(cc_address_str, str)
     else:
         assert cc_address_str is None
 
     bcc_address_str: Optional[str] = message_contents.address_list_to_str("bcc_address_list")
-    if bcc_address_str:
+    if bcc_address_str or bcc_address_str == "":
         assert isinstance(bcc_address_str, str)
     else:
         assert bcc_address_str is None

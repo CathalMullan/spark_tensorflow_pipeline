@@ -17,5 +17,5 @@ test:
 
 .PHONY: validate
 validate:
-	make lint
-	make test
+	make lint | tee logs/validate.log
+	make test | tee -a logs/validate.log
