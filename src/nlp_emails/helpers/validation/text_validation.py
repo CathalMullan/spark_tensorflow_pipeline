@@ -36,3 +36,19 @@ def strip_html_contents(text: str) -> str:
     stripped_text = str(soup.get_text())
 
     return stripped_text
+
+
+def is_valid_length(text: str, minimum: int, maximum: int) -> bool:
+    """
+    Ensure text is between a min and max.
+
+    :param text: text to measure length
+    :param minimum: lower bound integer
+    :param maximum: higher bound integer
+    :return: bool if valid
+    """
+    text_len = len(text)
+    if text_len >= maximum or text_len <= minimum:
+        return True
+
+    return False

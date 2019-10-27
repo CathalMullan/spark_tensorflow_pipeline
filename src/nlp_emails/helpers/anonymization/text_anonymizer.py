@@ -4,6 +4,8 @@ Identify and anonymize personally identifiable information in text.
 https://spacy.io/api/annotation.
 https://faker.readthedocs.io/en/master/providers.html
 """
+import binascii
+import hashlib
 from typing import Callable, Dict
 
 import faker
@@ -103,3 +105,34 @@ def faker_generate_replacements(text: str) -> str:
                 text = text.replace(token, FAKER_DICT[key](), 1)
 
     return text
+
+
+def hash_salt_text(text: str) -> str:
+    """
+    Take a string and returns a hashed/salted version using secret key.
+
+    :param text: string to be hashed
+    :return: hashed version of string
+    """
+    salt = b"f8bfae8c3aee9de3e72e683b948fea550aa2fd3dbae4bd2d4912def1b3c7f90f51e5e6cafc70bc6daa2df29cf96f319c6ed50e9"
+
+    hashed_str: str = binascii.hexlify(
+        hashlib.pbkdf2_hmac(hash_name="sha512", password=text.encode("utf-8"), salt=salt, iterations=1, dklen=8)
+    ).decode("utf-8")
+
+    return hashed_str
+
+
+def hash_address_header(header_str: str) -> str:
+    """
+    Replace address with hashed/salted alternative, split on "@".
+
+    :param header_str: an address header
+    :return: the same address header hashed as a string
+    """
+    local, at_symbol, domain = header_str.rpartition("@")
+
+    local_clean = hash_salt_text(local)
+    domain_clean = hash_salt_text(domain)
+
+    return local_clean + at_symbol + domain_clean

@@ -5,12 +5,13 @@ from email.message import EmailMessage
 from typing import List, Optional
 
 import talon
+from bs4 import BeautifulSoup
 from talon import quotations
 
 from nlp_emails.helpers.anonymization.text_anonymizer import faker_generate_replacements, spacy_anonymize_text
 from nlp_emails.helpers.config.get_config import CONFIG
 from nlp_emails.helpers.globals.regex import INLINE_MESSAGE_SEPARATOR, SUSPICIOUS_INLINE
-from nlp_emails.helpers.validation.text_validation import ensure_language_english, strip_html_contents
+from nlp_emails.helpers.validation.text_validation import ensure_language_english, is_valid_length, strip_html_contents
 
 talon.init()
 
@@ -49,7 +50,12 @@ def get_message_body(message: EmailMessage) -> Optional[str]:
         return None
 
     message_body: str = potential_message_body
-    if "html" in core_message.get_content_subtype():
+
+    # Check length now to prevent unnecessary processing
+    if not is_valid_length(text=message_body, minimum=200, maximum=10_000):
+        return None
+
+    if "html" in core_message.get_content_subtype() or bool(BeautifulSoup(message_body, "html.parser").find()):
         message_body = strip_html_contents(text=message_body)
 
     if not ensure_language_english(text=message_body):
@@ -61,12 +67,16 @@ def get_message_body(message: EmailMessage) -> Optional[str]:
     message_body = str(quotations.extract_from_plain(message_body))
 
     # Identify personal information
-    if CONFIG.get("message_extraction").get("do_content_tagging") is True:
+    if CONFIG.get("message_extraction").get("do_content_tagging"):
         message_body = spacy_anonymize_text(message_body)
 
         # Anonymize personal information
-        if CONFIG.get("message_extraction").get("do_faker_replacement") is True:
+        if CONFIG.get("message_extraction").get("do_faker_replacement"):
             message_body = faker_generate_replacements(message_body)
+
+    # Check length once more after processing
+    if not is_valid_length(text=message_body, minimum=200, maximum=10_000):
+        return None
 
     return message_body
 

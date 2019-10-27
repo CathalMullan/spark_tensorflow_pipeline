@@ -247,6 +247,7 @@ For example
 
 Attempt to emulate GMail viewing capabilities, but worth noting this will only be used to view mail, will not be a
 fully fledged email client.
+Recommend similar mail to the one currently open thanks to topics?
 
 #### Acceptance Criteria
 TBD

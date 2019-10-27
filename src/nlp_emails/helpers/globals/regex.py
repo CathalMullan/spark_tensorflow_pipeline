@@ -12,7 +12,7 @@ SUBJECT_PREFIX_STR = (
 SUBJECT_PREFIX = re.compile(SUBJECT_PREFIX_STR, re.IGNORECASE)
 
 # Identify separator lines in text suggesting a inline message
-INLINE_MESSAGE_SEPARATOR = re.compile(r"^[-_*]{4,}.*")
+INLINE_MESSAGE_SEPARATOR = re.compile(r"[-_*=]{4,}.*")
 
 # Identify email headers in text, suggesting a inline message
 SUSPICIOUS_INLINE = re.compile(r"(To:|Subject:|From:|Cc:|Bcc?)", re.IGNORECASE)

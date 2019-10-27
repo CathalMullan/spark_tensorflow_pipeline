@@ -96,29 +96,17 @@ def test_get_message_date(date_header_str: Optional[str], valid_date: bool) -> N
 
 
 @pytest.mark.parametrize(
-    "subject_header_str, valid_subject",
-    [
-        (None, False),
-        ("", False),
-        ("Re: Your job offer...", True),
-        ("Fwd:", True),
-        ("Dit is een Nederlandse verklaring", False),
-    ],
+    "subject_header_str", [None, "", "Re: Your job offer...", "Fwd:", "Dit is een Nederlandse verklaring"]
 )
-def test_get_message_subject(subject_header_str: str, valid_subject: bool) -> None:
+def test_get_message_subject(subject_header_str: str) -> None:
     """
     Ensure the subject header of a mail can be parsed and verified as English.
 
     :param subject_header_str: the message subject header as a string
-    :param valid_subject: whether the subject is valid
     :return:
     """
-    message_subject: Optional[str] = get_message_subject(subject_header_str=subject_header_str)
-
-    if valid_subject:
-        assert isinstance(message_subject, str)
-    else:
-        assert message_subject is None
+    message_subject: str = get_message_subject(subject_header_str=subject_header_str)
+    assert isinstance(message_subject, str)
 
 
 @pytest.mark.parametrize("message_id_str", ["Message-ID: <78910@example.net>", None, ""])

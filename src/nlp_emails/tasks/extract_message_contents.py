@@ -104,9 +104,9 @@ Subject: {self.subject}
             "message_id": self.message_id,
             "date": self.date,
             "from_address": self.from_address,
-            "to_address": self.address_list_to_str("to_address_list"),
-            "cc_address": self.address_list_to_str("cc_address_list"),
-            "bcc_address_list": self.address_list_to_str("bcc_address_list"),
+            "to_addresses": self.address_list_to_str("to_address_list"),
+            "cc_addresses": self.address_list_to_str("cc_address_list"),
+            "bcc_addresses": self.address_list_to_str("bcc_address_list"),
             "subject": self.subject,
             "body": self.body,
         }

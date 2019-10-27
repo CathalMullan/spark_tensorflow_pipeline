@@ -8,7 +8,11 @@ from email.utils import make_msgid, mktime_tz, parsedate_tz, unquote
 from encodings.aliases import aliases
 from typing import Dict, List, Optional, Tuple
 
-from nlp_emails.helpers.anonymization.text_anonymizer import faker_generate_replacements, spacy_anonymize_text
+from nlp_emails.helpers.anonymization.text_anonymizer import (
+    faker_generate_replacements,
+    hash_address_header,
+    spacy_anonymize_text,
+)
 from nlp_emails.helpers.config.get_config import CONFIG
 from nlp_emails.helpers.globals.regex import SUBJECT_PREFIX
 from nlp_emails.helpers.validation.address_validation import parse_address_str
@@ -31,6 +35,9 @@ def get_message_address(header_str: str) -> Optional[str]:
         print(f"Header Error - Cannot parse address header: {header_str}")
         return None
 
+    if CONFIG.get("message_extraction").get("do_address_hashing"):
+        parsed_address = hash_address_header(parsed_address)
+
     return parsed_address
 
 
@@ -51,7 +58,10 @@ def get_message_address_list(header_str: str) -> Optional[List[str]]:
     for potential_address in split_header_str:
         parsed_address: Optional[str] = parse_address_str(potential_address=potential_address)
         if parsed_address:
-            parsed_header_addresses.append(parsed_address)
+            if CONFIG.get("message_extraction").get("do_address_hashing"):
+                parsed_header_addresses.append(hash_address_header(parsed_address))
+            else:
+                parsed_header_addresses.append(parsed_address)
 
     if not parsed_header_addresses:
         print(f"Header Error - Cannot parse address list header: {header_str}")
@@ -83,7 +93,7 @@ def get_message_date(date_header_str: str) -> Optional[datetime]:
     return None
 
 
-def get_message_subject(subject_header_str: str) -> Optional[str]:
+def get_message_subject(subject_header_str: str) -> str:
     """
     Get the message subject header as a cleaned string.
 
@@ -96,13 +106,13 @@ def get_message_subject(subject_header_str: str) -> Optional[str]:
     """
     if not subject_header_str:
         print(f"Header Error - No 'subject' header: {subject_header_str}")
-        return None
+        return ""
 
     # Remove tagging prefixes such as 'Re' and 'Fwd' using regex.
     subject = str(SUBJECT_PREFIX.sub("", subject_header_str))
 
     if not ensure_language_english(text=subject):
-        return None
+        return ""
 
     # Identify personal information
     if CONFIG.get("message_extraction").get("do_content_tagging"):
@@ -129,6 +139,10 @@ def get_message_message_id(message_id_str: str) -> str:
         message_id_str = make_msgid()
 
     clean_message_id = unquote(message_id_str)
+
+    if CONFIG.get("message_extraction").get("do_address_hashing"):
+        clean_message_id = hash_address_header(clean_message_id)
+
     return clean_message_id
 
 
