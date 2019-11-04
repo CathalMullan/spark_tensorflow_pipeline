@@ -7,6 +7,9 @@ logs/*
 !data/.gitkeep
 data/*
 
+!/models/.gitkeep
+models/*
+
 ## Auto Generated ##
 # Created by https://www.gitignore.io/api/python,intellij+all
 # Edit at https://www.gitignore.io/?templates=python,intellij+all
