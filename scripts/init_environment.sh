@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-: <<'COMMENT'
-Create the virtual environment (venv) for Python development.
-Install packages using Poetry,
-COMMENT
+# Create the virtual environment (venv) for Python development.
+# Install packages using Poetry,
 
 # Ensure Python 3.7.* is installed and active
 REQUIRED_PYTHON=3.7
@@ -32,3 +30,8 @@ pip install poetry
 
 # Install packages
 poetry install
+
+# NOTE: Until Tensorflow releases fix - https://github.com/tensorflow/tensorflow/pull/32758
+pip install tensorflow
+pip install tensorflow_probability
+pip install tensorflow-transform
