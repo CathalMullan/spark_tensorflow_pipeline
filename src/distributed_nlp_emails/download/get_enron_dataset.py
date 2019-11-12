@@ -8,7 +8,7 @@ from typing import Optional
 import requests
 from tqdm import tqdm
 
-from nlp_emails.helpers.globals.directories import ENRON_DIR, list_files_in_folder
+from distributed_nlp_emails.helpers.globals.directories import ENRON_DIR, list_files_in_folder
 
 DOWNLOAD_LINK = "http://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz"
 
