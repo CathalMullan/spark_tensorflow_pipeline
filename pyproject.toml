@@ -44,4 +44,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["bs4", "faker", "pandas", "requests", "spacy", "talon", "toml", "tqdm", "validators"]
+known_third_party = ["bs4", "faker", "pandas", "pytest", "requests", "spacy", "talon", "toml", "tqdm", "validators"]
