@@ -38,7 +38,3 @@ def eml_pipeline() -> None:
 
     print(f"Count: {len(message_contents)}")
     print(f"Finish: {int(time.time()) - start_time} seconds", flush=True)
-
-
-if __name__ == "__main__":
-    eml_pipeline()

@@ -18,7 +18,7 @@ def strip_html_contents(text: str) -> str:
     """
     soup = BeautifulSoup(text, "lxml")
 
-    stripped_text = soup.text.strip()
+    stripped_text = str(soup.text.strip())
     return stripped_text
 
 

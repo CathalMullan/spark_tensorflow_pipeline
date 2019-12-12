@@ -176,10 +176,10 @@ def parse_header_value(header_value: str) -> str:
             # Check charset is a valid Python charset
             clean_charset = charset.replace("-", "_")
             if clean_charset and clean_charset in aliases.keys():
-                return str(value, encoding=clean_charset, errors='replace')
+                return str(value, encoding=clean_charset, errors="replace")
         else:
             # Convert bytes to string
             if isinstance(value, bytes):
-                return value.decode(errors='replace')
+                return value.decode(errors="replace")
 
     return str(header_value)

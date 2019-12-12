@@ -1,14 +1,14 @@
 ## Custom ##
 venv/
 
-!logs/.gitkeep
 logs/*
+!logs/.gitkeep
 
-!data/.gitkeep
 data/*
+!data/.gitkeep
 
-!/models/.gitkeep
 models/*
+!/models/.gitkeep
 
 ## Auto Generated ##
 # Created by https://www.gitignore.io/api/python,intellij+all

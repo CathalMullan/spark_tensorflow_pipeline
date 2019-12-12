@@ -29,9 +29,11 @@ pip install --upgrade pip
 pip install poetry
 
 # Install packages
+poetry update
 poetry install
 
 # NOTE: Until Tensorflow releases fix - https://github.com/tensorflow/tensorflow/pull/32758
-pip install tensorflow
-pip install tensorflow_probability
-pip install tensorflow-transform
+pip install tf-nightly-2.0-preview==2.0.0-dev20190731 tfp-nightly --upgrade
+TFVERSION=$(python -c 'import tensorflow; print(tensorflow.__version__)')
+[[ $TFVERSION == '2.0.0-dev20190731' ]] &&
+  echo >&2 "Failed to install the most recent TF. Found: ${TFVERSION}."

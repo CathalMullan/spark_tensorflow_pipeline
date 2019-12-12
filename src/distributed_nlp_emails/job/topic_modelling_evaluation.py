@@ -1,51 +1,56 @@
+"""
+Pipeline for topic modelling.
+"""
 import functools
-from typing import List
+import pickle  # nosec
+from typing import Callable, Dict, List, Tuple
 
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.sparse import load_npz
-from six.moves import cPickle as pickle
+from tensorflow_probability import distributions as tfd
 
 from distributed_nlp_emails.helpers.globals.directories import DATA_DIR, MODELS_DIR
 
-tfd = tfp.distributions
-
 
 class Config:
-    layer_sizes: List[str] = [300, 300, 300]
-    learning_rate: int = 3e-4
+    """
+    Config settings for TensorFlow init.
+    """
+
+    layer_sizes: List[int] = [300, 300, 300]
+    learning_rate: float = 3e-4
     max_steps: int = 180_000
     num_topics: int = 10
     activation: str = "relu"
-    prior_initial_value: int = 0.7
+    prior_initial_value: float = 0.7
     prior_burn_in_steps: int = 1_200
     model_dir: str = f"{MODELS_DIR}/topic_model_checkpoint"
     serving_dir: str = f"{MODELS_DIR}/topic_model_serving"
     viz_steps: int = 1_000
-    vocabulary: str = None
+    vocabulary: Dict[int, str] = {}
     batch_size: int = 32
 
 
-def clip_dirichlet_parameters(x):
+def clip_dirichlet_parameters(tensor: tf.Tensor) -> tf.Tensor:
     """
     Clips the Dirichlet parameters to the numerically stable KL region.
+
+    :param tensor: Tensor to be clipped
+    :return: clipped Tensor within range
     """
-    return tf.clip_by_value(x, 1e-3, 1e3)
+    return tf.clip_by_value(tensor, 1e-3, 1e3)
 
 
-def make_encoder(activation, num_topics, layer_sizes):
+def make_encoder(activation: str, num_topics: int, layer_sizes: List[int]) -> Callable[[np.ndarray], tfd.Dirichlet]:
     """
     Create the encoder function.
 
-    Args:
-      activation: Activation function to use.
-      num_topics: The number of topics.
-      layer_sizes: The number of hidden units per layer in the encoder.
-
-    Returns:
-      encoder: A `callable` mapping a bag-of-words `Tensor` to a
-        `tfd.Distribution` instance over topics.
+    :param activation: Activation function to use.
+    :param num_topics: The number of topics.
+    :param layer_sizes: The number of hidden units per layer in the encoder.
+    :return: A callable mapping a bag-of-words Tensor to a tfd.Distribution instance over topics.
     """
     encoder_net = tf.keras.Sequential()
     for num_hidden_units in layer_sizes:
@@ -55,24 +60,26 @@ def make_encoder(activation, num_topics, layer_sizes):
 
     encoder_net.add(tf.keras.layers.Dense(num_topics, activation=tf.nn.softplus, kernel_initializer="glorot_normal"))
 
-    def encoder(bag_of_words):
+    def encoder(bag_of_words: np.ndarray) -> tfd.Dirichlet:
+        """
+        Map bag-of-words to a Dirichlet instance.
+
+        :param bag_of_words: numpy nd array of values
+        :return: clipped Dirichlet of dictionary
+        """
         net = clip_dirichlet_parameters(encoder_net(bag_of_words))
         return tfd.Dirichlet(concentration=net, name="topics_posterior")
 
     return encoder
 
 
-def make_decoder(num_topics, num_words):
+def make_decoder(num_topics: int, num_words: int) -> Tuple[Callable[[tf.Tensor], tfd.OneHotCategorical], tf.Variable]:
     """
     Create the decoder function.
 
-    Args:
-      num_topics: The number of topics.
-      num_words: The number of words.
-
-    Returns:
-      decoder: A `callable` mapping a `Tensor` of encodings to a
-        `tfd.Distribution` instance over words.
+    :param num_topics: The number of topics.
+    :param num_words: The number of words.
+    :return: A callable mapping a Tensor of encodings to a tfd.Distribution instance over words.
     """
     glorot_normal_initializer = tf.initializers.glorot_normal()
     topics_words_logits = tf.Variable(
@@ -81,60 +88,61 @@ def make_decoder(num_topics, num_words):
 
     topics_words = tf.nn.softmax(topics_words_logits, axis=-1)
 
-    def decoder(topics):
-        word_probs = tf.matmul(topics, topics_words)
-        # The observations are bag of words and therefore not one-hot. However,
-        # log_prob of OneHotCategorical computes the probability correctly in
-        # this case.
-        return tfd.OneHotCategorical(probs=word_probs, name="bag_of_words")
+    def decoder(topics: tf.Tensor) -> tfd.OneHotCategorical:
+        """
+        Map Tensor to a OneHotCategorical instance.
+
+        :param topics: Tensor containing topic values
+        :return: OneHotCategorical of topics
+        """
+        word_probabilities = tf.matmul(topics, topics_words)
+        # The observations are bag of words and therefore not one-hot. However, log_prob of OneHotCategorical computes
+        # the probability correctly in this case.
+        return tfd.OneHotCategorical(probs=word_probabilities, name="bag_of_words")
 
     return decoder, topics_words
 
 
-def make_prior(num_topics, initial_value):
+def make_prior(num_topics: int, initial_value: float) -> Tuple[Callable[[], tfd.Dirichlet], List[tf.Variable]]:
     """
     Create the prior distribution.
 
-    Args:
-      num_topics: Number of topics.
-      initial_value: The starting value for the prior parameters.
-
-    Returns:
-      prior: A `callable` that returns a `tf.distribution.Distribution`
-          instance, the prior distribution.
-      prior_variables: A `list` of `Variable` objects, the trainable parameters
-          of the prior.
+    :param num_topics: Number of topics.
+    :param initial_value: The starting value for the prior parameters.
+    :return:
+        - A callable that returns a tf.distribution.Distribution instance, the prior distribution.
+        - A list of Variable objects, the trainable parameters of the prior.
     """
-    softplus_inverse_initializer = tfp.math.softplus_inverse(
+    soft_plus_inverse_initializer = tfp.math.softplus_inverse(
         tf.constant(value=initial_value, shape=[1, num_topics], dtype=tf.float32)
     )
 
-    logit_concentration = tf.Variable(name="logit_concentration", initial_value=softplus_inverse_initializer)
-
+    logit_concentration = tf.Variable(name="logit_concentration", initial_value=soft_plus_inverse_initializer)
     concentration = clip_dirichlet_parameters(tf.nn.softplus(logit_concentration))
     prior_variables = [logit_concentration]
 
-    def prior():
+    def prior() -> tfd.Dirichlet:
+        """
+        Create Dirichlet instance for prior distribution.
+
+        :return: Dirichlet instance
+        """
         return tfd.Dirichlet(concentration=concentration, name="topics_prior")
 
     return prior, prior_variables
 
 
-def model_fn(features, mode, params: Config):
+def model_fn(features: np.ndarray, mode: tf.estimator.ModeKeys, params: Config) -> tf.estimator.EstimatorSpec:
     """
     Build the model function for use in an estimator.
 
-    Arguments:
-      features: The input features for the estimator.
-      mode: Signifies whether it is train or test or predict.
-      params: Some hyper-parameters as a dictionary.
-    Returns:
-      EstimatorSpec: A tf.estimator.EstimatorSpec instance.
+    :param features: The input features for the estimator.
+    :param mode: Signifies whether it is train or test or predict.
+    :param params: Some hyper-parameters as a Config.
+    :return: A tf.estimator.EstimatorSpec instance.
     """
     encoder = make_encoder(params.activation, params.num_topics, params.layer_sizes)
-
     decoder, topics_words = make_decoder(params.num_topics, features.shape[1])
-
     prior, prior_variables = make_prior(params.num_topics, params.prior_initial_value)
 
     topics_prior = prior()
@@ -147,17 +155,17 @@ def model_fn(features, mode, params: Config):
     reconstruction = random_reconstruction.log_prob(features)
     tf.summary.scalar("reconstruction", tf.reduce_mean(input_tensor=reconstruction))
 
-    # Compute the KL-divergence between two Dirichlets analytically.
+    # Compute the KL-divergence between two Dirichlet values analytically.
     # The sampled KL does not work well for "sparse" distributions
-    kl = tfd.kl_divergence(topics_posterior, topics_prior)
-    tf.summary.scalar("kl", tf.reduce_mean(input_tensor=kl))
+    kl_divergence = tfd.kl_divergence(topics_posterior, topics_prior)
+    tf.summary.scalar("kl", tf.reduce_mean(input_tensor=kl_divergence))
 
     # Ensure that the KL is non-negative (up to a very small slack).
     # Negative KL can happen due to numerical instability.
-    with tf.control_dependencies([tf.debugging.assert_greater(kl, -1e-3, message="kl")]):
-        kl = tf.identity(kl)
+    with tf.control_dependencies([tf.debugging.assert_greater(kl_divergence, -1e-3, message="kl")]):
+        kl_divergence = tf.identity(kl_divergence)
 
-    elbo = reconstruction - kl
+    elbo = reconstruction - kl_divergence
     avg_elbo = tf.reduce_mean(input_tensor=elbo)
     tf.summary.scalar("elbo", avg_elbo)
     loss = -avg_elbo
@@ -171,10 +179,20 @@ def model_fn(features, mode, params: Config):
     grads_and_vars = optimizer.compute_gradients(loss)
     grads_and_vars_except_prior = [x for x in grads_and_vars if x[1] not in prior_variables]
 
-    def train_op_except_prior():
+    def train_op_except_prior() -> tf.Operation:
+        """
+        Apply gradients excluding prior.
+
+        :return: Optimizer applying gradients
+        """
         return optimizer.apply_gradients(grads_and_vars_except_prior, global_step=global_step)
 
-    def train_op_all():
+    def train_op_all() -> tf.Operation:
+        """
+        Apply gradients with prior.
+
+        :return: Optimizer applying gradients
+        """
         return optimizer.apply_gradients(grads_and_vars, global_step=global_step)
 
     train_op = tf.cond(
@@ -203,24 +221,21 @@ def model_fn(features, mode, params: Config):
         eval_metric_ops={
             "elbo": tf.compat.v1.metrics.mean(elbo),
             "reconstruction": tf.compat.v1.metrics.mean(reconstruction),
-            "kl": tf.compat.v1.metrics.mean(kl),
+            "kl": tf.compat.v1.metrics.mean(kl_divergence),
             "perplexity": (perplexity_tensor, log_perplexity_update),
             "topics": (topics, tf.no_op()),
         },
     )
 
 
-def get_topics_strings(topics_words, alpha, vocabulary):
+def get_topics_strings(topics_words: tf.Tensor, alpha: tf.Tensor, vocabulary: Dict[int, str]) -> np.array:
     """
-    Returns the summary of the learned topics.
+    Return the summary of the learned topics.
 
-    Arguments:
-      topics_words: KxV tensor with topics as rows and words as columns.
-      alpha: 1xK tensor of prior Dirichlet concentrations for the
-          topics.
-      vocabulary: A mapping of word's integer index to the corresponding string.
-    Returns:
-      summary: A np.array with strings.
+    :param topics_words: KxV tensor with topics as rows and words as columns.
+    :param alpha: 1xK tensor of prior Dirichlet concentrations for the topics.
+    :param vocabulary: A mapping of word's integer index to the corresponding string.
+    :return: A np.array with strings.
     """
     alpha = np.squeeze(alpha, axis=0)
     # Use a stable sorting algorithm so that when alpha is fixed
@@ -237,9 +252,14 @@ def get_topics_strings(topics_words, alpha, vocabulary):
     return np.array(res)
 
 
-def load_dataset(path, num_words, shuffle_and_repeat):
+def load_dataset(path: str, num_words: int, shuffle_and_repeat: bool) -> tf.data.Dataset:
     """
     Return dataset as tf.data.Dataset.
+
+    :param path: path to npz file
+    :param num_words: number of words in dictionary
+    :param shuffle_and_repeat: whether to shuffle and repeat the epoch
+    :return: dataset as tf.data.Dataset
     """
     sparse_matrix = load_npz(path)
     num_documents = sparse_matrix.shape[0]
@@ -251,10 +271,22 @@ def load_dataset(path, num_words, shuffle_and_repeat):
 
     # Returns a single document as a dense TensorFlow tensor.
     # The dataset is stored as a sparse matrix outside of the graph.
-    def get_row_py_func(idx):
-        def get_row_python(idx_py):
-            return np.squeeze(np.array(sparse_matrix[idx_py].todense()), axis=0)
+    def get_row_python(idx_py: int) -> np.ndarray:
+        """
+        Get dataset row as numpy array.
 
+        :param idx_py: row index
+        :return: numpy nd array
+        """
+        return np.squeeze(np.array(sparse_matrix[idx_py].todense()), axis=0)
+
+    def get_row_py_func(idx: int) -> tf.Tensor:
+        """
+        Set shape and type of dataset row.
+
+        :param idx: row index
+        :return: dense Tensor of dataset row
+        """
         py_func = tf.py_function(get_row_python, [idx], tf.float32)
         py_func.set_shape((num_words,))
         return py_func
@@ -263,36 +295,43 @@ def load_dataset(path, num_words, shuffle_and_repeat):
     return dataset
 
 
-def build_input_fns(data_dir, batch_size):
+def build_input_fns(
+    data_dir: str, batch_size: int
+) -> Tuple[Callable[[], tf.data.Dataset], Callable[[], tf.data.Dataset], Dict[int, str]]:
     """
-    Builds iterators for train and evaluation data.
+    Build iterators for train and evaluation data. Each object is represented as a bag-of-words vector.
 
-    Each object is represented as a bag-of-words vector.
-
-    Arguments:
-      data_dir: Folder in which to store the data.
-      batch_size: Batch size for both train and evaluation.
-    Returns:
-      train_input_fn: A function that returns an iterator over the training data.
-      eval_input_fn: A function that returns an iterator over the evaluation data.
-      vocabulary: A mapping of word's integer index to the corresponding string.
+    :param data_dir: Folder in which to store the data.
+    :param batch_size: Batch size for both train and evaluation.
+    :return:
+        - A function that returns an iterator over the training data.
+        - A function that returns an iterator over the evaluation data.
+        - A mapping of word's integer index to the corresponding string.
     """
-    with open(f"{data_dir}/dictionary_10000.pkl", "rb") as f:
-        words_to_idx = pickle.load(f)
+    with open(f"{data_dir}/dictionary_10000.pkl", "rb") as file:
+        words_to_idx = pickle.load(file)  # nosec
 
     num_words = len(words_to_idx)
-    vocabulary = [None] * num_words
+    vocabulary = {}
     for word, idx in words_to_idx.items():
         vocabulary[idx] = word
 
-    # Build an iterator over training batches.
-    def train_input_fn():
+    def train_input_fn() -> tf.data.Dataset:
+        """
+        Load the train dataset.
+
+        :return: tf data Dataset
+        """
         train_dataset = load_dataset(f"{data_dir}/train_data_10000.npz", num_words, shuffle_and_repeat=True)
         train_dataset = train_dataset.batch(batch_size).prefetch(batch_size)
         return train_dataset
 
-    # Build an iterator over the held-out set.
-    def eval_input_fn():
+    def eval_input_fn() -> tf.data.Dataset:
+        """
+        Load the test/eval dataset.
+
+        :return: tf data Dataset
+        """
         eval_dataset = load_dataset(f"{data_dir}/test_data_10000.npz", num_words, shuffle_and_repeat=False)
         eval_dataset = eval_dataset.batch(batch_size)
         return eval_dataset
@@ -300,7 +339,12 @@ def build_input_fns(data_dir, batch_size):
     return train_input_fn, eval_input_fn, vocabulary
 
 
-def main():
+def topic_modelling_evaluation() -> None:
+    """
+    Pipeline for topic modelling.
+
+    :return: None
+    """
     global_config = Config()
     global_config.activation = getattr(tf.nn, global_config.activation)
     tf.io.gfile.makedirs(global_config.model_dir)
@@ -330,7 +374,3 @@ def main():
                 print("\n")
             else:
                 print(f"{str(value)}")
-
-
-if __name__ == "__main__":
-    main()
