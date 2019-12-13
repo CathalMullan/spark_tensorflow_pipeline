@@ -22,10 +22,10 @@ class Config:
     layer_sizes: List[int] = [300, 300, 300]
     learning_rate: float = 3e-4
     max_steps: int = 180_000
-    num_topics: int = 10
+    num_topics: int = 50
     activation: str = "relu"
     prior_initial_value: float = 0.7
-    prior_burn_in_steps: int = 1_200
+    prior_burn_in_steps: int = 120_000
     model_dir: str = f"{MODELS_DIR}/topic_model_checkpoint"
     serving_dir: str = f"{MODELS_DIR}/topic_model_serving"
     viz_steps: int = 1_000
@@ -244,7 +244,7 @@ def get_topics_strings(topics_words: tf.Tensor, alpha: tf.Tensor, vocabulary: Di
     top_words = np.argsort(-topics_words, axis=1)
 
     res = []
-    for topic_idx in highest_weight_topics:
+    for topic_idx in highest_weight_topics[:10]:
         line = [f"index = {topic_idx}, alpha = {alpha[topic_idx]:.2f},"]
         line += [vocabulary[word] for word in top_words[topic_idx, :10]]
         res.append(" ".join(line))
@@ -308,7 +308,7 @@ def build_input_fns(
         - A function that returns an iterator over the evaluation data.
         - A mapping of word's integer index to the corresponding string.
     """
-    with open(f"{data_dir}/dictionary_10000.pkl", "rb") as file:
+    with open(f"{data_dir}/dictionary_50000.pkl", "rb") as file:
         words_to_idx = pickle.load(file)  # nosec
 
     num_words = len(words_to_idx)
@@ -322,7 +322,7 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        train_dataset = load_dataset(f"{data_dir}/train_data_10000.npz", num_words, shuffle_and_repeat=True)
+        train_dataset = load_dataset(f"{data_dir}/train_data_50000.npz", num_words, shuffle_and_repeat=True)
         train_dataset = train_dataset.batch(batch_size).prefetch(batch_size)
         return train_dataset
 
@@ -332,7 +332,7 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        eval_dataset = load_dataset(f"{data_dir}/test_data_10000.npz", num_words, shuffle_and_repeat=False)
+        eval_dataset = load_dataset(f"{data_dir}/test_data_50000.npz", num_words, shuffle_and_repeat=False)
         eval_dataset = eval_dataset.batch(batch_size)
         return eval_dataset
 
@@ -374,3 +374,7 @@ def topic_modelling_evaluation() -> None:
                 print("\n")
             else:
                 print(f"{str(value)}")
+
+
+if __name__ == "__main__":
+    topic_modelling_evaluation()

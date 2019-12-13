@@ -27,6 +27,7 @@ pyarrow = "^0.15.0"
 pandas = "^0.25.2"
 pyspark = "^2.4"
 numpy = "^1.17"
+natsort = "^6.2"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
@@ -49,4 +50,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["bs4", "faker", "numpy", "pandas", "pyarrow", "pyspark", "pytest", "requests", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "toml", "tqdm", "validators"]
+known_third_party = ["bs4", "faker", "natsort", "numpy", "pandas", "pyarrow", "pyspark", "pytest", "requests", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "toml", "tqdm", "validators"]

@@ -91,7 +91,7 @@ def topic_modelling_processing() -> None:
     data_frame: DataFrame = spark.read\
         .format("parquet")\
         .option("compression", "snappy")\
-        .load(PARQUET_DIR + "/processed_enron_10000.parquet.snappy")\
+        .load(PARQUET_DIR + "/processed_enron_50000.parquet.snappy")\
         .select("body")\
         .withColumn("id", monotonically_increasing_id())\
         .repartition(16)
@@ -107,9 +107,13 @@ def topic_modelling_processing() -> None:
     term_document = vectorizer.fit_transform(pd_data_frame["processed_text"])
 
     set_size = data_frame.count() // 2
-    save_npz(file=f"{DATA_DIR}/ignore/train_data_10000.npz", matrix=term_document[set_size:, :].astype(np.float32))
-    save_npz(file=f"{DATA_DIR}/ignore/test_data_10000.npz", matrix=term_document[:set_size, :].astype(np.float32))
-    with open(f"{DATA_DIR}/ignore/dictionary_10000.pkl", "wb") as file:
+    save_npz(file=f"{DATA_DIR}/ignore/train_data_50000.npz", matrix=term_document[set_size:, :].astype(np.float32))
+    save_npz(file=f"{DATA_DIR}/ignore/test_data_50000.npz", matrix=term_document[:set_size, :].astype(np.float32))
+    with open(f"{DATA_DIR}/ignore/dictionary_50000.pkl", "wb") as file:
         pickle.dump(vectorizer.vocabulary_, file)
 
     spark.stop()
+
+
+if __name__ == "__main__":
+    topic_modelling_processing()
