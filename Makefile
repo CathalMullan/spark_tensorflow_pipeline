@@ -1,5 +1,5 @@
 .PHONY: venv
-venv:
+env:
 	./scripts/init_environment.sh
 
 .PHONY: hook
@@ -9,16 +9,16 @@ hook:
 
 .PHONY: lint
 lint:
-	pre-commit run --all-files | tee logs/lint.log
+	pre-commit run --all-files
 
 .PHONY: test
 test:
-	pytest tests/ | tee logs/test.log
+	pytest tests/
 
 .PHONY: validate
 validate:
-	make lint | tee logs/validate.log
-	make test | tee -a logs/validate.log
+	make lint
+	make test
 
 .PHONY: enron
 enron:
@@ -27,3 +27,11 @@ enron:
 .PHONY: spacy
 spacy:
 	get_spacy_model
+
+.PHONY: cluster-up
+cluster-up:
+	./scripts/create_cluster.sh
+
+.PHONY: cluster-down
+cluster-down:
+	./scripts/delete_cluster.sh

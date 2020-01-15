@@ -67,11 +67,11 @@ def get_message_body(message: EmailMessage) -> Optional[str]:
     message_body = str(quotations.extract_from_plain(message_body))
 
     # Identify personal information
-    if CONFIG.get("message_extraction").get("do_content_tagging"):
+    if CONFIG.do_content_tagging:
         message_body = spacy_anonymize_text(message_body)
 
         # Anonymize personal information
-        if CONFIG.get("message_extraction").get("do_faker_replacement"):
+        if CONFIG.do_faker_replacement:
             message_body = faker_generate_replacements(message_body)
 
     return message_body

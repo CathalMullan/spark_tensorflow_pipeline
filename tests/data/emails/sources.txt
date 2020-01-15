@@ -1,2 +1,0 @@
-https://github.com/mikel/mail/tree/master/spec/fixtures/emails
-https://github.com/php-mime-mail-parser/php-mime-mail-parser/tree/master/tests/mails

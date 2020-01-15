@@ -14,7 +14,8 @@ from scipy.sparse import save_npz
 from sklearn.feature_extraction.text import CountVectorizer
 from spacy.tokens.token import Token
 
-from distributed_nlp_emails.helpers.globals.directories import DATA_DIR, PARQUET_DIR
+from distributed_nlp_emails.helpers.config.get_config import CONFIG
+from distributed_nlp_emails.helpers.globals.directories import DATA_DIR
 
 # https://blog.dominodatalab.com/making-pyspark-work-spacy-overcoming-serialization-errors/
 # spaCy isn't serializable but loading it is semi-expensive
@@ -71,7 +72,7 @@ def text_lemmatize_and_lower(text: str) -> List[str]:
     return clean_tokens
 
 
-def topic_modelling_processing() -> None:
+def main() -> None:
     """
     Read in Parquet file containing processed eml data, and vectorize to Numpy arrays.
 
@@ -81,19 +82,18 @@ def topic_modelling_processing() -> None:
     :return: None
     """
     # fmt: off
-    spark: SparkSession = SparkSession.builder\
-        .master("local[4]")\
-        .appName("topic_modelling")\
-        .config("spark.executor.memory", "8g")\
-        .config("spark.driver.memory", "6g")\
+    spark: SparkSession = SparkSession.builder \
+        .master(CONFIG.cluster_ip) \
+        .appName("topic_modelling") \
+        .config("spark.kubernetes.container.image", "spark:spark") \
         .getOrCreate()
 
-    data_frame: DataFrame = spark.read\
-        .format("parquet")\
-        .option("compression", "snappy")\
-        .load(PARQUET_DIR + "/processed_enron_50000.parquet.snappy")\
-        .select("body")\
-        .withColumn("id", monotonically_increasing_id())\
+    data_frame: DataFrame = spark.read \
+        .format("parquet") \
+        .option("compression", "snappy") \
+        .load("local:///data/processed/parquet/processed_enron_10000.parquet.snappy") \
+        .select("body") \
+        .withColumn("id", monotonically_increasing_id()) \
         .repartition(16)
     # fmt: on
 
@@ -107,13 +107,13 @@ def topic_modelling_processing() -> None:
     term_document = vectorizer.fit_transform(pd_data_frame["processed_text"])
 
     set_size = data_frame.count() // 2
-    save_npz(file=f"{DATA_DIR}/ignore/train_data_50000.npz", matrix=term_document[set_size:, :].astype(np.float32))
-    save_npz(file=f"{DATA_DIR}/ignore/test_data_50000.npz", matrix=term_document[:set_size, :].astype(np.float32))
-    with open(f"{DATA_DIR}/ignore/dictionary_50000.pkl", "wb") as file:
+    save_npz(file=f"{DATA_DIR}/ignore/train_data_10000.npz", matrix=term_document[set_size:, :].astype(np.float32))
+    save_npz(file=f"{DATA_DIR}/ignore/test_data_10000.npz", matrix=term_document[:set_size, :].astype(np.float32))
+    with open(f"{DATA_DIR}/ignore/dictionary_10000.pkl", "wb") as file:
         pickle.dump(vectorizer.vocabulary_, file)
 
     spark.stop()
 
 
 if __name__ == "__main__":
-    topic_modelling_processing()
+    main()

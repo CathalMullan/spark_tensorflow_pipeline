@@ -32,7 +32,7 @@ def get_message_address(header_str: str) -> Optional[str]:
     if not parsed_address:
         return None
 
-    if CONFIG.get("message_extraction").get("do_address_hashing"):
+    if CONFIG.do_address_hashing:
         parsed_address = hash_address_header(parsed_address)
 
     return parsed_address
@@ -54,7 +54,7 @@ def get_message_address_list(header_str: str) -> Optional[List[str]]:
     for potential_address in split_header_str:
         parsed_address: Optional[str] = parse_address_str(potential_address=potential_address)
         if isinstance(parsed_address, str):
-            if CONFIG.get("message_extraction").get("do_address_hashing"):
+            if CONFIG.do_address_hashing:
                 parsed_address = str(hash_address_header(parsed_address))
 
             parsed_header_addresses.append(parsed_address)
@@ -105,11 +105,11 @@ def get_message_subject(subject_header_str: str) -> str:
     subject = str(SUBJECT_PREFIX.sub("", subject_header_str))
 
     # Identify personal information
-    if CONFIG.get("message_extraction").get("do_content_tagging"):
+    if CONFIG.do_content_tagging:
         subject = spacy_anonymize_text(subject)
 
         # Anonymize personal information
-        if CONFIG.get("message_extraction").get("do_faker_replacement"):
+        if CONFIG.do_faker_replacement:
             subject = faker_generate_replacements(subject)
 
     return subject
@@ -130,7 +130,7 @@ def get_message_message_id(message_id_str: str) -> str:
 
     clean_message_id = unquote(message_id_str)
 
-    if CONFIG.get("message_extraction").get("do_address_hashing"):
+    if CONFIG.do_address_hashing:
         clean_message_id = hash_address_header(clean_message_id)
 
     return clean_message_id

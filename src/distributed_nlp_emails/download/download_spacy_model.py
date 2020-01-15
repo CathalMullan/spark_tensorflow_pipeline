@@ -4,7 +4,7 @@ Download the spaCy model used for anonymizer.
 import spacy
 
 
-def get_spacy_model() -> None:
+def main() -> None:
     """
     Download the spaCy model used for anonymizer.
 

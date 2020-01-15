@@ -1,0 +1,39 @@
+dist: bionic
+language: python
+python:
+  - 3.7
+
+stages:
+  - lint
+  - test
+
+jobs:
+  include:
+    - stage: lint
+      install:
+        # General
+        - pip install --upgrade pip
+
+        # Pre-Commit
+        - pip install pre-commit
+        - pre-commit install-hooks
+      script:
+        - pre-commit run --all-files
+
+    - stage: test
+      install:
+        # General
+        - sudo apt-get -y update
+        - pip install --upgrade pip
+
+        # TensorFlow
+        - sudo apt-get -y install g++-4.8
+
+        # Poetry
+        - pip install poetry
+        - poetry install -v
+
+        # Spacy Model
+        - download_spacy_model
+      script:
+        - pytest tests/

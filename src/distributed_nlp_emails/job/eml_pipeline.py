@@ -13,20 +13,20 @@ from distributed_nlp_emails.helpers.output.output_parquet import output_parquet
 from distributed_nlp_emails.tasks.extract_message_contents import MessageContent, eml_path_to_message_contents
 
 
-def eml_pipeline() -> None:
+def main() -> None:
     """
     Read in the Enron dataset, parse out contents while anonymizing them then save to an parquet file and eml files.
 
     :return: None
     """
-    file_paths: List[Path] = list_files_in_folder(f"{ENRON_DIR}/maildir/allen-p")
+    file_paths: List[Path] = list_files_in_folder(f"{ENRON_DIR}/maildir")
 
     # DEBUG - Sort files like Unix filesystem
     str_paths: List[str] = [str(path) for path in file_paths]
     file_paths = [Path(path) for path in natsorted(str_paths)]
 
     # DEBUG - Limit number of files processed
-    file_paths = file_paths[:100]
+    file_paths = file_paths[:10_000]
 
     start_time: int = int(time.time())
 
@@ -34,11 +34,11 @@ def eml_pipeline() -> None:
         optional_message_contents: List[Optional[MessageContent]] = pool.map(eml_path_to_message_contents, file_paths)
 
     message_contents: List[MessageContent] = [message for message in optional_message_contents if message]
-    output_parquet(message_contents, file_name="processed_enron_allen")
+    output_parquet(message_contents, file_name="processed_enron_10000")
 
     print(f"Count: {len(message_contents)}")
     print(f"Finish: {int(time.time()) - start_time} seconds", flush=True)
 
 
 if __name__ == "__main__":
-    eml_pipeline()
+    main()

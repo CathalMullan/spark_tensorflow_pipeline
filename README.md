@@ -1,5 +1,49 @@
 # Distributed NLP Emails
 
+## TODO
+Workload expectations:
+- **S**: 1 Day(s) - Small
+- **M**: 2 Day(s) - Medium
+- **L**: 4 Day(s) - Large
+
+### Short-term
+* S: Create individual bucket specifically for testing data.
+* S: Upload small Parquet files / email files to bucket, use for testing.
+* M: Read from Google Cloud in Minikube, with Spark job storing numpy array in bucket.
+* M: Get Horovod working with TensorFlow in Minikube.
+* L: Export an iterable model from TensorFlow training.
+* L: Validate iteration of model across a number of runs.
+
+### Medium-term
+* M: Export a TensorFlow.js friendly model.
+* M: Use Terraform to create cluster, run Horovod code.
+* S: Create Spark Structured Streaming equivalent of batch processor, awaiting events.
+* S: Create event producer to crawl web for public emails. (scrapy)
+
+### Long-term
+* L: Complete summarization task on email bodies.
+* L: Complete actionable email task on email bodies.
+* L: Create React PWA frontend which mimics email client.
+* S: Serve models over API.
+* M: Serve model within JavaScript.
+* S: Airflow scheduling of batch jobs.
+* L: Monitoring solutions through Grafana and Prometheus.
+
+### Optional
+* M: Revisit initial eml pipeline step, try to integrate with Spark.
+* M: Integrate `cathal.dev` domain.
+* L: Continuous integration creating and destroying Terraform cluster.
+* M: Serve models using WebAssembly.
+* S: De-identification tool as a service.
+* L: Hadoop integration for batch jobs.
+* L: Consider using Vault and Consul for Kubernetes management.
+* M: Unified CLI tool for downloading dependencies.
+* L: Hybrid cloud streaming deployment over AWS and Google Cloud
+
+### Outcome
+- Min days of work: **40 Days** - **February 23, 2020**
+- Max days of work: **63 Days** - **April 15, 2020**
+
 ### Title
 Applying Natural Language Processing (NLP) techniques to detect topics, summarize, and identify actionable emails in a
 distributed fashion using Spark and TensorFlow

@@ -1,31 +1,43 @@
 """
-Attempt to read config path, parse contents to a dictionary.
+Parse environment into config.
 """
-from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from dataclasses import dataclass
+from os import getenv
+from typing import Optional
 
-import toml
+from dotenv import load_dotenv
 
-from distributed_nlp_emails.helpers.globals.directories import CONFIG_DIR
+from distributed_nlp_emails.helpers.globals.directories import PROJECT_DIR
+
+load_dotenv(dotenv_path=f"{PROJECT_DIR}/.env")
 
 
-def get_config(config_path: Union[Path, str] = CONFIG_DIR + "/config.toml") -> Optional[Dict[str, Any]]:  # type: ignore
+def is_true(variable: Optional[str]) -> bool:
     """
-    Attempt to read config path, parse contents to a dictionary.
+    Validate string comparision to handle boolean environment variables.
 
-    :param config_path: string or Path to config file
-    :return: parsed dict of file contents
+    :param variable: environment variable
+    :return: boolean if 'true'
     """
-    if not isinstance(config_path, Path):
-        config_path = Path(config_path)
-
-    if not config_path.exists() or not config_path.is_file():
-        return None
-
-    parsed_toml = toml.load(config_path)
-
-    toml_dict = dict(parsed_toml)
-    return toml_dict
+    return variable == "true"
 
 
-CONFIG: Optional[Dict[str, Any]] = get_config()  # type: ignore
+@dataclass
+class Config:
+    """
+    Config object.
+    """
+
+    # Generic
+    is_dev: bool = is_true("IS_DEV")
+
+    # Message Extraction
+    do_content_tagging: bool = is_true(getenv("DO_CONTENT_TAGGING"))
+    do_faker_replacement: bool = is_true(getenv("DO_FAKER_REPLACEMENT"))
+    do_address_hashing: bool = is_true(getenv("DO_ADDRESS_HASHING"))
+
+    # Spark Configurations
+    cluster_ip: str = str(getenv("CLUSTER_IP"))
+
+
+CONFIG = Config()

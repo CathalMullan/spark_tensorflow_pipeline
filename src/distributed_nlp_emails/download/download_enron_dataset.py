@@ -69,7 +69,7 @@ def extract_tarfile() -> None:
     print("Finished extracting dataset.")
 
 
-def get_enron_dataset() -> None:
+def main() -> None:
     """
     Download and extract the Enron dataset.
 

@@ -339,7 +339,7 @@ def build_input_fns(
     return train_input_fn, eval_input_fn, vocabulary
 
 
-def topic_modelling_evaluation() -> None:
+def main() -> None:
     """
     Pipeline for topic modelling.
 
@@ -377,4 +377,4 @@ def topic_modelling_evaluation() -> None:
 
 
 if __name__ == "__main__":
-    topic_modelling_evaluation()
+    main()
