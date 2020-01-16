@@ -15,13 +15,13 @@ Workload expectations:
 * L: Validate iteration of model across a number of runs.
 
 ### Medium-term
+* L: Complete summarization task on email bodies.
 * M: Export a TensorFlow.js friendly model.
 * M: Use Terraform to create cluster, run Horovod code.
 * S: Create Spark Structured Streaming equivalent of batch processor, awaiting events.
 * S: Create event producer to crawl web for public emails. (scrapy)
 
 ### Long-term
-* L: Complete summarization task on email bodies.
 * L: Complete actionable email task on email bodies.
 * L: Create React PWA frontend which mimics email client.
 * S: Serve models over API.

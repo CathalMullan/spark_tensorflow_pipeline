@@ -20,14 +20,6 @@ validate:
 	make lint
 	make test
 
-.PHONY: enron
-enron:
-	get_enron_dataset
-
-.PHONY: spacy
-spacy:
-	get_spacy_model
-
 .PHONY: cluster-up
 cluster-up:
 	./scripts/create_cluster.sh

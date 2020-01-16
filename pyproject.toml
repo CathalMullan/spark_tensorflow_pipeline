@@ -29,6 +29,8 @@ python-dotenv = "^0.10.3"
 tensorflow = "2.1.0"
 tensorflow-probability = "0.9"
 google-cloud-storage = "^1.24.1"
+click = "^7.0"
+google-auth = "^1.10.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
@@ -42,6 +44,8 @@ download_spacy_model = "distributed_nlp_emails.download.download_spacy_model:mai
 eml_pipeline = "distributed_nlp_emails.job.eml_pipeline:main"
 topic_modelling_evaluation = "distributed_nlp_emails.job.topic_modelling_evaluation:main"
 topic_modelling_processing = "distributed_nlp_emails.job.topic_modelling_processing:main"
+gcp_upload = "distributed_nlp_emails.upload.gcp_upload:main"
+gcp_download = "distributed_nlp_emails.download.gcp_download:main"
 
 [tool.black]
 line-length = 120
@@ -52,4 +56,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["bs4", "dotenv", "faker", "natsort", "numpy", "pandas", "pyarrow", "pyspark", "pytest", "requests", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "tqdm", "validators"]
+known_third_party = ["bs4", "click", "dotenv", "faker", "google", "natsort", "numpy", "pandas", "pyarrow", "pyspark", "pytest", "requests", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "tqdm", "validators"]

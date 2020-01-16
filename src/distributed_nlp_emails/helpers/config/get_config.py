@@ -1,8 +1,10 @@
 """
 Parse environment into config.
 """
+import os
 from dataclasses import dataclass
 from os import getenv
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -36,8 +38,12 @@ class Config:
     do_faker_replacement: bool = is_true(getenv("DO_FAKER_REPLACEMENT"))
     do_address_hashing: bool = is_true(getenv("DO_ADDRESS_HASHING"))
 
-    # Spark Configurations
+    # Kubernetes
     cluster_ip: str = str(getenv("CLUSTER_IP"))
+
+    # Google Cloud
+    gcp_credentials: Path = Path(os.path.expanduser(str(getenv("GCP_CREDENTIALS")).strip()))
+    gcp_project_id: str = str(getenv("GCP_PROJECT_ID"))
 
 
 CONFIG = Config()
