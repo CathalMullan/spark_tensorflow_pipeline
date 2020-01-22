@@ -9,7 +9,7 @@ import pytest
 
 from distributed_nlp_emails.helpers.globals.directories import TESTS_EMAIL_DIR, list_files_in_folder
 from distributed_nlp_emails.helpers.input.input_eml import read_messages_from_directory
-from distributed_nlp_emails.tasks.extract_message_contents import (
+from distributed_nlp_emails.parsing.message_contents_extraction import (
     MessageContent,
     eml_path_to_message_contents,
     extract_message_contents,

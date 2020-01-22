@@ -5,30 +5,36 @@
 cd "$(dirname "${0}")" || exit
 cd ../
 
-# Start up Minikube with mounted Data directory and attach Kubectl
-minikube start --memory 8192 --cpus 4
+# Start up Minikube and attach Kubectl
+minikube config set memory 4096
+minikube config set cpus 2
+minikube config set disk-size 60GB
 
-# Add Permissions to Default Service Account
-kubectl create clusterrolebinding default --clusterrole=edit --serviceaccount=default:default --namespace=default
-
-# Build Spark Docker Image
-export SPARK_HOME=/opt/spark-2.4
-(cd $SPARK_HOME && ./bin/docker-image-tool.sh -m -t spark build)
-
-# Verify Image
+minikube start
 eval $(minikube docker-env)
-docker image ls
 
-# Run Test Job
-export CLUSTER_IP=k8s://https://$(minikube ip):8443
+# Create custom Service Account
+kubectl create serviceaccount spark
+kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default
+
+# Build base image (spark-py:spark)
+export SPARK_HOME=/opt/spark-3.0
+(cd ${SPARK_HOME} && ./bin/docker-image-tool.sh -t spark -p ./kubernetes/dockerfiles/spark/bindings/python/Dockerfile build)
+
+# Build custom image (dnlp-pyspark)
+docker build . -t dnlp-pyspark
+
+# Test job with
 spark-submit \
-    --master $CLUSTER_IP \
+    --master k8s://https://$(minikube ip):8443 \
     --deploy-mode cluster \
-    --name spark-pi \
-    --class org.apache.spark.examples.SparkPi \
+    --name processing \
     --conf spark.executor.instances=2 \
-    --conf spark.kubernetes.container.image=spark:spark \
-    local:///opt/spark/examples/jars/spark-examples_2.11-2.4.4.jar
+    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+    --conf spark.kubernetes.container.image=dnlp-pyspark \
+    /src/distributed_nlp_emails/job/topic_modelling_processing.py
 
-# Verify Answer
-kubectl logs spark-pi-1548218924109-driver | grep "Pi is roughly"
+# View Spark Dashboard
+kubectl get pod
+kubectl port-forward <driver-pod-name> 4040:4040
+open -n -a "Google Chrome" --args "--new-tab" http://localhost:4040

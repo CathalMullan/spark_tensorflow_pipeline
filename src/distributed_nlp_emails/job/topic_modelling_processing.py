@@ -10,12 +10,12 @@ import spacy
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.functions import monotonically_increasing_id, udf
 from pyspark.sql.types import ArrayType, StringType
+from pyspark.sql.udf import UserDefinedFunction
 from scipy.sparse import save_npz
 from sklearn.feature_extraction.text import CountVectorizer
 from spacy.tokens.token import Token
 
-from distributed_nlp_emails.helpers.config.get_config import CONFIG
-from distributed_nlp_emails.helpers.globals.directories import DATA_DIR
+from distributed_nlp_emails.helpers.globals.directories import PARQUET_DIR, PROCESSED_DIR
 
 # https://blog.dominodatalab.com/making-pyspark-work-spacy-overcoming-serialization-errors/
 # spaCy isn't serializable but loading it is semi-expensive
@@ -59,7 +59,7 @@ def text_lemmatize_and_lower(text: str) -> List[str]:
     :param text: dirty text to be lemmatized
     :return: text cleaned of unwanted characters, lemmatized and lowered
     """
-    # Remove punctuation using C lookup table (very efficient)
+    # Remove punctuation using C lookup table
     # https://stackoverflow.com/a/266162
     text = text.translate(str.maketrans("", "", string.punctuation))
     text_doc = SPACY(text)
@@ -76,28 +76,35 @@ def main() -> None:
     """
     Read in Parquet file containing processed eml data, and vectorize to Numpy arrays.
 
-    sudo hostname -s 127.0.0.1
-    export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+    JVM forking error?
+        sudo hostname -s 127.0.0.1
+        export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
 
     :return: None
     """
     # fmt: off
     spark: SparkSession = SparkSession.builder \
-        .master(CONFIG.cluster_ip) \
+        .master("local[4]") \
         .appName("topic_modelling") \
-        .config("spark.kubernetes.container.image", "spark:spark") \
         .getOrCreate()
+    # fmt: on
 
+    # Access the JVM logging context.
+    jvm_logger = spark.sparkContext._jvm.org.apache.log4j
+    logger = jvm_logger.LogManager.getLogger(__name__)
+    logger.info("Beginning Topic Modelling Processing Job.")
+
+    # fmt: off
     data_frame: DataFrame = spark.read \
         .format("parquet") \
         .option("compression", "snappy") \
-        .load("local:///data/processed/parquet/processed_enron_10000.parquet.snappy") \
+        .load(PARQUET_DIR + "/processed_enron_10000.parquet.snappy") \
         .select("body") \
         .withColumn("id", monotonically_increasing_id()) \
         .repartition(16)
     # fmt: on
 
-    udf_text_lemmatize_and_lower = udf(text_lemmatize_and_lower, ArrayType(StringType()))
+    udf_text_lemmatize_and_lower: UserDefinedFunction = udf(text_lemmatize_and_lower, ArrayType(StringType()))
     data_frame = data_frame.withColumn("processed_text", udf_text_lemmatize_and_lower("body"))
 
     pd_data_frame = data_frame.select("processed_text").toPandas()
@@ -107,10 +114,13 @@ def main() -> None:
     term_document = vectorizer.fit_transform(pd_data_frame["processed_text"])
 
     set_size = data_frame.count() // 2
-    save_npz(file=f"{DATA_DIR}/ignore/train_data_10000.npz", matrix=term_document[set_size:, :].astype(np.float32))
-    save_npz(file=f"{DATA_DIR}/ignore/test_data_10000.npz", matrix=term_document[:set_size, :].astype(np.float32))
-    with open(f"{DATA_DIR}/ignore/dictionary_10000.pkl", "wb") as file:
+    save_npz(file=f"{PROCESSED_DIR}/train_data_10000.npz", matrix=term_document[:set_size, :].astype(np.float32))
+    save_npz(file=f"{PROCESSED_DIR}/test_data_10000.npz", matrix=term_document[set_size:, :].astype(np.float32))
+    with open(f"{PROCESSED_DIR}/dictionary_10000.pkl", "wb") as file:
         pickle.dump(vectorizer.vocabulary_, file)
+
+    logger.info(f"Dictionary: {vectorizer.vocabulary_}")
+    logger.info("Finished Topic Modelling Processing Job.")
 
     spark.stop()
 

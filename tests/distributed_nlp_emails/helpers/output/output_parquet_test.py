@@ -4,7 +4,7 @@ Convert a single message content to a parquet file with valid/invalid paths.
 from email.message import EmailMessage
 
 from distributed_nlp_emails.helpers.output.output_parquet import output_parquet
-from distributed_nlp_emails.tasks.extract_message_contents import MessageContent
+from distributed_nlp_emails.parsing.message_contents_extraction import MessageContent
 
 MESSAGE_CONTENTS = MessageContent(
     original_message=EmailMessage(),

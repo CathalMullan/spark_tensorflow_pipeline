@@ -6,17 +6,16 @@ Workload expectations:
 - **M**: 2 Day(s) - Medium
 - **L**: 4 Day(s) - Large
 
-### Short-term
-* S: Create individual bucket specifically for testing data.
-* S: Upload small Parquet files / email files to bucket, use for testing.
-* M: Read from Google Cloud in Minikube, with Spark job storing numpy array in bucket.
-* M: Get Horovod working with TensorFlow in Minikube.
+### In Progress
 * L: Export an iterable model from TensorFlow training.
+* M: Export a TensorFlow.js friendly model.
 * L: Validate iteration of model across a number of runs.
+* M: Read from Google Cloud in Minikube, with Spark job storing numpy array in bucket.
+
+### Short-term
+* L: Complete summarization task on email bodies.
 
 ### Medium-term
-* L: Complete summarization task on email bodies.
-* M: Export a TensorFlow.js friendly model.
 * M: Use Terraform to create cluster, run Horovod code.
 * S: Create Spark Structured Streaming equivalent of batch processor, awaiting events.
 * S: Create event producer to crawl web for public emails. (scrapy)
@@ -39,10 +38,6 @@ Workload expectations:
 * L: Consider using Vault and Consul for Kubernetes management.
 * M: Unified CLI tool for downloading dependencies.
 * L: Hybrid cloud streaming deployment over AWS and Google Cloud
-
-### Outcome
-- Min days of work: **40 Days** - **February 23, 2020**
-- Max days of work: **63 Days** - **April 15, 2020**
 
 ### Title
 Applying Natural Language Processing (NLP) techniques to detect topics, summarize, and identify actionable emails in a

@@ -45,5 +45,9 @@ class Config:
     gcp_credentials: Path = Path(os.path.expanduser(str(getenv("GCP_CREDENTIALS")).strip()))
     gcp_project_id: str = str(getenv("GCP_PROJECT_ID"))
 
+    # Spark (Batch)
+    spark_gcp_credentials: str = str(getenv("SPARK_GCP_CREDENTIALS"))
+    spark_gcp_parquet: str = str(getenv("SPARK_GCP_PARQUET"))
+
 
 CONFIG = Config()

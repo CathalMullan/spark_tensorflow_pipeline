@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import pytest
 
-from distributed_nlp_emails.tasks.message_header_extraction import (
+from distributed_nlp_emails.parsing.message_header_extraction import (
     get_message_address,
     get_message_address_list,
     get_message_date,

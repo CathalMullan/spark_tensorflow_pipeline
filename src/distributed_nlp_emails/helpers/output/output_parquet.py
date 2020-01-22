@@ -7,7 +7,7 @@ from typing import List
 from pandas import DataFrame
 
 from distributed_nlp_emails.helpers.globals.directories import PARQUET_DIR
-from distributed_nlp_emails.tasks.extract_message_contents import MessageContent
+from distributed_nlp_emails.parsing.message_contents_extraction import MessageContent
 
 
 def output_parquet(message_contents: List[MessageContent], file_name: str) -> None:

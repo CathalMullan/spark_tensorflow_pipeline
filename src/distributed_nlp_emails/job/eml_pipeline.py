@@ -10,7 +10,7 @@ from natsort import natsorted
 
 from distributed_nlp_emails.helpers.globals.directories import ENRON_DIR, list_files_in_folder
 from distributed_nlp_emails.helpers.output.output_parquet import output_parquet
-from distributed_nlp_emails.tasks.extract_message_contents import MessageContent, eml_path_to_message_contents
+from distributed_nlp_emails.parsing.message_contents_extraction import MessageContent, eml_path_to_message_contents
 
 
 def main() -> None:
@@ -38,7 +38,3 @@ def main() -> None:
 
     print(f"Count: {len(message_contents)}")
     print(f"Finish: {int(time.time()) - start_time} seconds", flush=True)
-
-
-if __name__ == "__main__":
-    main()

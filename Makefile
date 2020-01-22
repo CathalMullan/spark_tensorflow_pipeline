@@ -20,10 +20,14 @@ validate:
 	make lint
 	make test
 
+.PHONY: cluster
+cluster:
+	./scripts/create_cluster.sh
+
 .PHONY: cluster-up
 cluster-up:
-	./scripts/create_cluster.sh
+	minikube start
 
 .PHONY: cluster-down
 cluster-down:
-	./scripts/delete_cluster.sh
+	minikube stop

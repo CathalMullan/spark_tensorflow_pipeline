@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Union
 from distributed_nlp_emails.helpers.globals.directories import ENRON_DIR
 from distributed_nlp_emails.helpers.input.input_eml import read_message_from_file
 from distributed_nlp_emails.helpers.validation.text_validation import is_valid_length
-from distributed_nlp_emails.tasks.message_body_extraction import get_message_body
-from distributed_nlp_emails.tasks.message_header_extraction import (
+from distributed_nlp_emails.parsing.message_body_extraction import get_message_body
+from distributed_nlp_emails.parsing.message_header_extraction import (
     get_message_address,
     get_message_address_list,
     get_message_date,

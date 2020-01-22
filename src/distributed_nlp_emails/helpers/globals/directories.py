@@ -9,6 +9,7 @@ PROJECT_DIR = dirname(dirname(dirname(dirname(dirname(abspath(__file__))))))
 
 CONFIG_DIR = PROJECT_DIR + "/config"
 MODELS_DIR = PROJECT_DIR + "/models"
+MAVEN_DIR = PROJECT_DIR + "/maven"
 
 DATA_DIR = PROJECT_DIR + "/data"
 RAW_DIR = DATA_DIR + "/raw"

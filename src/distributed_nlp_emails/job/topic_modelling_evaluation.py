@@ -1,17 +1,19 @@
 """
-Pipeline for topic modelling.
+Pipeline for topic modelling using LDA.
 """
 import functools
 import pickle  # nosec
-from typing import Callable, Dict, List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
+import horovod.tensorflow as hvd
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from horovod import spark
 from scipy.sparse import load_npz
 from tensorflow_probability import distributions as tfd
 
-from distributed_nlp_emails.helpers.globals.directories import DATA_DIR, MODELS_DIR
+from distributed_nlp_emails.helpers.globals.directories import MODELS_DIR, PROCESSED_DIR
 
 
 class Config:
@@ -26,7 +28,8 @@ class Config:
     activation: str = "relu"
     prior_initial_value: float = 0.7
     prior_burn_in_steps: int = 120_000
-    model_dir: str = f"{MODELS_DIR}/topic_model_checkpoint"
+    model_dir: Optional[str] = f"{MODELS_DIR}/topic_checkpoint"
+    saved_model_dir: Optional[str] = f"{MODELS_DIR}/topic_saved_model"
     serving_dir: str = f"{MODELS_DIR}/topic_model_serving"
     viz_steps: int = 1_000
     vocabulary: Dict[int, str] = {}
@@ -172,7 +175,10 @@ def model_fn(features: np.ndarray, mode: tf.estimator.ModeKeys, params: Config) 
 
     # Perform variational inference by minimizing the -ELBO.
     global_step = tf.compat.v1.train.get_or_create_global_step()
-    optimizer = tf.compat.v1.train.AdamOptimizer(3e-4)
+    optimizer = tf.compat.v1.train.AdamOptimizer(params.learning_rate)
+
+    # Horovod: add Horovod Distributed Optimizer.
+    optimizer = hvd.DistributedOptimizer(optimizer)
 
     # This implements the "burn-in" for prior parameters
     # For the first prior_burn_in_steps steps they are fixed, and then trained jointly with the other parameters.
@@ -308,7 +314,7 @@ def build_input_fns(
         - A function that returns an iterator over the evaluation data.
         - A mapping of word's integer index to the corresponding string.
     """
-    with open(f"{data_dir}/dictionary_50000.pkl", "rb") as file:
+    with open(f"{data_dir}/dictionary_10000.pkl", "rb") as file:
         words_to_idx = pickle.load(file)  # nosec
 
     num_words = len(words_to_idx)
@@ -322,7 +328,7 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        train_dataset = load_dataset(f"{data_dir}/train_data_50000.npz", num_words, shuffle_and_repeat=True)
+        train_dataset = load_dataset(f"{data_dir}/train_data_10000.npz", num_words, shuffle_and_repeat=True)
         train_dataset = train_dataset.batch(batch_size).prefetch(batch_size)
         return train_dataset
 
@@ -332,39 +338,59 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        eval_dataset = load_dataset(f"{data_dir}/test_data_50000.npz", num_words, shuffle_and_repeat=False)
+        eval_dataset = load_dataset(f"{data_dir}/test_data_10000.npz", num_words, shuffle_and_repeat=False)
         eval_dataset = eval_dataset.batch(batch_size)
         return eval_dataset
 
     return train_input_fn, eval_input_fn, vocabulary
 
 
-def main() -> None:
+def tensorflow_init() -> None:
     """
     Pipeline for topic modelling.
 
     :return: None
     """
+    # Initialize Horovod
+    hvd.init()
+
     global_config = Config()
     global_config.activation = getattr(tf.nn, global_config.activation)
-    tf.io.gfile.makedirs(global_config.model_dir)
+
+    # Only save model in primary Horovod pod.
+    if hvd.rank() == 0:
+        tf.io.gfile.makedirs(global_config.model_dir)
+    else:
+        global_config.model_dir = None
 
     train_input_fn, eval_input_fn, vocabulary = build_input_fns(
-        data_dir=f"{DATA_DIR}/ignore", batch_size=global_config.batch_size
+        data_dir=f"{PROCESSED_DIR}", batch_size=global_config.batch_size
     )
     global_config.vocabulary = vocabulary
 
+    # Horovod: pin GPU to be used to process local rank (one GPU per process)
+    gpu_list = tf.config.experimental.list_physical_devices("GPU")
+    for gpu in gpu_list:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    if gpu_list:
+        tf.config.experimental.set_visible_devices(gpu_list[hvd.local_rank()], "GPU")
+
     estimator = tf.estimator.Estimator(
-        model_fn,
+        model_fn=model_fn,
         params=global_config,
         config=tf.estimator.RunConfig(
             model_dir=global_config.model_dir, save_checkpoints_steps=global_config.viz_steps
         ),
     )
 
+    # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from rank 0 to all other processes.
+    # This is necessary to ensure consistent initialization of all workers when training is started with random weights
+    # or restored from a checkpoint.
+    broadcast_hook = hvd.BroadcastGlobalVariablesHook(0)
+
     for _ in range(global_config.max_steps // global_config.viz_steps):
-        estimator.train(train_input_fn, steps=global_config.viz_steps)
-        eval_results = estimator.evaluate(eval_input_fn)
+        estimator.train(input_fn=train_input_fn, steps=global_config.viz_steps, hooks=[broadcast_hook])
+        eval_results = estimator.evaluate(input_fn=eval_input_fn)
 
         for key, value in eval_results.items():
             print(f"{key}\n")
@@ -376,5 +402,10 @@ def main() -> None:
                 print(f"{str(value)}")
 
 
-if __name__ == "__main__":
-    main()
+def main() -> None:
+    """
+    Execute TensorFlow code across the Spark cluster.
+
+    :return: None
+    """
+    spark.run(tensorflow_init)
