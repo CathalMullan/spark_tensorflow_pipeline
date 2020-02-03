@@ -142,13 +142,9 @@ RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
     pip install horovod && \
     ldconfig
 
-WORKDIR /
-
 # Install Package
+WORKDIR /
 COPY . /
 
 RUN poetry config virtualenvs.create false
 RUN poetry install
-
-# Install Spacy Model
-RUN poetry run download_spacy_model

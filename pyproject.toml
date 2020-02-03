@@ -13,15 +13,6 @@ authors = ["Cathal Mullan <cmullan@proofpoint.com>"]
 
 [tool.poetry.dependencies]
 python = "3.7.*"
-tqdm = "^4.36"
-requests = "^2.22"
-validators = "^0.14.0"
-talon = "^1.4"
-bs4 = "^0.0.1"
-faker = "^2.0"
-spacy = "^2.2"
-pyarrow = "^0.15.0"
-pandas = "^0.25.2"
 pyspark = "^2.4"
 numpy = "^1.17"
 python-dotenv = "^0.10.3"
@@ -33,20 +24,20 @@ google-auth = "^1.10.1"
 setuptools = "^45.1.0"
 taskipy = "^1.1.0"
 horovod = "^0.19.0"
+fastapi = "^0.47.1"
+uvicorn = "^0.11.2"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
 pytest = "5.1.0"
 pytest-cov = "2.7.1"
-natsort = "^6.2"
-pyspark-stubs = "^2.4.0"
+pyspark-stubs = "^2.4"
 
 [tool.poetry.scripts]
-download_enron_dataset = "distributed_nlp_emails.download.download_enron_dataset:main"
-download_spacy_model = "distributed_nlp_emails.download.download_spacy_model:main"
-eml_pipeline = "distributed_nlp_emails.job.eml_pipeline:main"
-topic_modelling_processing = "distributed_nlp_emails.job.topic_modelling_processing:main"
-topic_modelling_evaluation = "distributed_nlp_emails.job.topic_modelling_evaluation:main"
+# Spark Batch & TensorFlow
+topic_modelling_train = "distributed_nlp_emails.tensorflow.topic_modelling.train_model:main"
+
+# Google Cloud
 gcp_upload = "distributed_nlp_emails.upload.gcp_upload:main"
 gcp_download = "distributed_nlp_emails.download.gcp_download:main"
 
@@ -61,4 +52,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["bs4", "click", "dotenv", "faker", "google", "horovod", "natsort", "numpy", "pandas", "pyarrow", "pyspark", "pytest", "requests", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "tqdm", "validators"]
+known_third_party = ["click", "dotenv", "google", "horovod", "numpy", "scipy", "tensorflow", "tensorflow_probability"]

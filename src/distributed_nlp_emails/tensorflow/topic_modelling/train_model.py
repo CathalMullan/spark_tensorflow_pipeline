@@ -1,24 +1,25 @@
 """
-Pipeline for topic modelling using LDA.
+Pipeline for topic modelling.
+
+See https://git.io/Jvsyn
 """
 import functools
 import pickle  # nosec
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import horovod.tensorflow as hvd
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from horovod import spark
 from scipy.sparse import load_npz
 from tensorflow_probability import distributions as tfd
 
 from distributed_nlp_emails.helpers.globals.directories import MODELS_DIR, PROCESSED_DIR
 
 
-class Config:
+class Parameters:
     """
-    Config settings for TensorFlow init.
+    Parameter settings for TensorFlow init.
     """
 
     layer_sizes: List[int] = [300, 300, 300]
@@ -28,10 +29,9 @@ class Config:
     activation: str = "relu"
     prior_initial_value: float = 0.7
     prior_burn_in_steps: int = 120_000
-    model_dir: Optional[str] = f"{MODELS_DIR}/topic_checkpoint"
-    saved_model_dir: Optional[str] = f"{MODELS_DIR}/topic_saved_model"
-    serving_dir: str = f"{MODELS_DIR}/topic_model_serving"
     viz_steps: int = 1_000
+    model_dir: Optional[str] = f"{MODELS_DIR}/topic_checkpoint"
+    saved_model_dir = f"{MODELS_DIR}/topic_model"
     vocabulary: Dict[int, str] = {}
     batch_size: int = 32
 
@@ -46,7 +46,7 @@ def clip_dirichlet_parameters(tensor: tf.Tensor) -> tf.Tensor:
     return tf.clip_by_value(tensor, 1e-3, 1e3)
 
 
-def make_encoder(activation: str, num_topics: int, layer_sizes: List[int]) -> Callable[[np.ndarray], tfd.Dirichlet]:
+def make_encoder(activation: str, num_topics: int, layer_sizes: List[int]) -> Callable[[tf.Tensor], tfd.Dirichlet]:
     """
     Create the encoder function.
 
@@ -63,7 +63,7 @@ def make_encoder(activation: str, num_topics: int, layer_sizes: List[int]) -> Ca
 
     encoder_net.add(tf.keras.layers.Dense(num_topics, activation=tf.nn.softplus, kernel_initializer="glorot_normal"))
 
-    def encoder(bag_of_words: np.ndarray) -> tfd.Dirichlet:
+    def encoder(bag_of_words: tf.Tensor) -> tfd.Dirichlet:
         """
         Map bag-of-words to a Dirichlet instance.
 
@@ -85,6 +85,7 @@ def make_decoder(num_topics: int, num_words: int) -> Tuple[Callable[[tf.Tensor],
     :return: A callable mapping a Tensor of encodings to a tfd.Distribution instance over words.
     """
     glorot_normal_initializer = tf.initializers.glorot_normal()
+
     topics_words_logits = tf.Variable(
         name="topics_words_logits", initial_value=glorot_normal_initializer([num_topics, num_words])
     )
@@ -99,8 +100,9 @@ def make_decoder(num_topics: int, num_words: int) -> Tuple[Callable[[tf.Tensor],
         :return: OneHotCategorical of topics
         """
         word_probabilities = tf.matmul(topics, topics_words)
-        # The observations are bag of words and therefore not one-hot. However, log_prob of OneHotCategorical computes
-        # the probability correctly in this case.
+
+        # The observations are bag of words and therefore not one-hot.
+        # However, log_prob of OneHotCategorical computes the probability correctly in this case.
         return tfd.OneHotCategorical(probs=word_probabilities, name="bag_of_words")
 
     return decoder, topics_words
@@ -135,13 +137,13 @@ def make_prior(num_topics: int, initial_value: float) -> Tuple[Callable[[], tfd.
     return prior, prior_variables
 
 
-def model_fn(features: np.ndarray, mode: tf.estimator.ModeKeys, params: Config) -> tf.estimator.EstimatorSpec:
+def model_fn(features: tf.Tensor, mode: tf.estimator.ModeKeys, params: Parameters) -> tf.estimator.EstimatorSpec:
     """
     Build the model function for use in an estimator.
 
     :param features: The input features for the estimator.
     :param mode: Signifies whether it is train or test or predict.
-    :param params: Some hyper-parameters as a Config.
+    :param params: Some hyper-parameters and config.
     :return: A tf.estimator.EstimatorSpec instance.
     """
     encoder = make_encoder(params.activation, params.num_topics, params.layer_sizes)
@@ -177,7 +179,7 @@ def model_fn(features: np.ndarray, mode: tf.estimator.ModeKeys, params: Config) 
     global_step = tf.compat.v1.train.get_or_create_global_step()
     optimizer = tf.compat.v1.train.AdamOptimizer(params.learning_rate)
 
-    # Horovod: add Horovod Distributed Optimizer.
+    # Add Horovod Distributed Optimizer.
     optimizer = hvd.DistributedOptimizer(optimizer)
 
     # This implements the "burn-in" for prior parameters
@@ -213,9 +215,12 @@ def model_fn(features: np.ndarray, mode: tf.estimator.ModeKeys, params: Config) 
     (log_perplexity_tensor, log_perplexity_update) = tf.compat.v1.metrics.mean(log_perplexity)
     perplexity_tensor = tf.exp(log_perplexity_tensor)
 
-    # Obtain the topics summary. Implemented as a py_func for simplicity.
+    # Obtain the topics summary.
+    # Implemented as a py_func for simplicity.
     topics = tf.py_function(
-        functools.partial(get_topics_strings, vocabulary=params.vocabulary), [topics_words, alpha], tf.string
+        func=functools.partial(get_topics_strings, vocabulary=params.vocabulary),
+        inp=[topics_words, alpha],
+        Tout=tf.string,
     )
 
     tf.compat.v1.summary.text("topics", topics)
@@ -238,27 +243,33 @@ def get_topics_strings(topics_words: tf.Tensor, alpha: tf.Tensor, vocabulary: Di
     """
     Return the summary of the learned topics.
 
+    Show the top ten words matched with the top twenty topics.
+
     :param topics_words: KxV tensor with topics as rows and words as columns.
     :param alpha: 1xK tensor of prior Dirichlet concentrations for the topics.
     :param vocabulary: A mapping of word's integer index to the corresponding string.
     :return: A np.array with strings.
     """
     alpha = np.squeeze(alpha, axis=0)
-    # Use a stable sorting algorithm so that when alpha is fixed
-    # we always get the same topics.
+
+    # Use a stable sorting algorithm so that when alpha is fixed we always get the same topics.
     highest_weight_topics = np.argsort(-alpha, kind="mergesort")
     top_words = np.argsort(-topics_words, axis=1)
 
-    res = []
-    for topic_idx in highest_weight_topics[:10]:
-        line = [f"index = {topic_idx}, alpha = {alpha[topic_idx]:.2f},"]
-        line += [vocabulary[word] for word in top_words[topic_idx, :10]]
-        res.append(" ".join(line))
+    # Use string formatting to print a table of results.
+    topics: List[str] = [f"{'index':<8} {'name':<20} {'alpha':<8} {'words':<120}"]
 
-    return np.array(res)
+    for topic_index in highest_weight_topics[:20]:
+        topic_name: str = vocabulary[top_words[topic_index][0]]
+        topic_alpha: str = f"{round(alpha[topic_index], ndigits=4):.2f}"
+        topic_words: str = " ".join([vocabulary[word] for word in top_words[topic_index, :10]])
+
+        topics.append(f"{topic_index:<8} {topic_name:<20} {topic_alpha:<8} {topic_words:<120}")
+
+    return np.array(topics)
 
 
-def load_dataset(path: str, num_words: int, shuffle_and_repeat: bool) -> tf.data.Dataset:
+def parse_dataset(path: str, num_words: int, shuffle_and_repeat: bool) -> tf.data.Dataset:
     """
     Return dataset as tf.data.Dataset.
 
@@ -277,23 +288,23 @@ def load_dataset(path: str, num_words: int, shuffle_and_repeat: bool) -> tf.data
 
     # Returns a single document as a dense TensorFlow tensor.
     # The dataset is stored as a sparse matrix outside of the graph.
-    def get_row_python(idx_py: int) -> np.ndarray:
+    def get_row_python(index: int) -> np.ndarray:
         """
         Get dataset row as numpy array.
 
-        :param idx_py: row index
+        :param index: row index
         :return: numpy nd array
         """
-        return np.squeeze(np.array(sparse_matrix[idx_py].todense()), axis=0)
+        return np.squeeze(np.array(sparse_matrix[index].todense()), axis=0)
 
-    def get_row_py_func(idx: int) -> tf.Tensor:
+    def get_row_py_func(index: int) -> tf.Tensor:
         """
         Set shape and type of dataset row.
 
-        :param idx: row index
+        :param index: row index
         :return: dense Tensor of dataset row
         """
-        py_func = tf.py_function(get_row_python, [idx], tf.float32)
+        py_func = tf.py_function(get_row_python, [index], tf.float32)
         py_func.set_shape((num_words,))
         return py_func
 
@@ -314,7 +325,7 @@ def build_input_fns(
         - A function that returns an iterator over the evaluation data.
         - A mapping of word's integer index to the corresponding string.
     """
-    with open(f"{data_dir}/dictionary_10000.pkl", "rb") as file:
+    with open(f"{data_dir}/dictionary_50000.pkl", "rb") as file:
         words_to_idx = pickle.load(file)  # nosec
 
     num_words = len(words_to_idx)
@@ -328,7 +339,10 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        train_dataset = load_dataset(f"{data_dir}/train_data_10000.npz", num_words, shuffle_and_repeat=True)
+        train_dataset = parse_dataset(
+            path=f"{data_dir}/train_data_50000.npz", num_words=num_words, shuffle_and_repeat=True
+        )
+
         train_dataset = train_dataset.batch(batch_size).prefetch(batch_size)
         return train_dataset
 
@@ -338,7 +352,10 @@ def build_input_fns(
 
         :return: tf data Dataset
         """
-        eval_dataset = load_dataset(f"{data_dir}/test_data_10000.npz", num_words, shuffle_and_repeat=False)
+        eval_dataset = parse_dataset(
+            path=f"{data_dir}/test_data_50000.npz", num_words=num_words, shuffle_and_repeat=False
+        )
+
         eval_dataset = eval_dataset.batch(batch_size)
         return eval_dataset
 
@@ -354,52 +371,51 @@ def tensorflow_init() -> None:
     # Initialize Horovod
     hvd.init()
 
-    global_config = Config()
-    global_config.activation = getattr(tf.nn, global_config.activation)
+    parameters = Parameters()
+    parameters.activation = getattr(tf.nn, parameters.activation)
 
     # Only save model in primary Horovod pod.
     if hvd.rank() == 0:
-        tf.io.gfile.makedirs(global_config.model_dir)
+        tf.io.gfile.makedirs(parameters.model_dir)
     else:
-        global_config.model_dir = None
+        parameters.model_dir = None
 
     train_input_fn, eval_input_fn, vocabulary = build_input_fns(
-        data_dir=f"{PROCESSED_DIR}", batch_size=global_config.batch_size
+        data_dir=f"{PROCESSED_DIR}", batch_size=parameters.batch_size
     )
-    global_config.vocabulary = vocabulary
 
-    # Horovod: pin GPU to be used to process local rank (one GPU per process)
+    parameters.vocabulary = vocabulary
+
+    # Pin GPU to be used to process local rank (one GPU per process)
     gpu_list = tf.config.experimental.list_physical_devices("GPU")
     for gpu in gpu_list:
         tf.config.experimental.set_memory_growth(gpu, True)
+
     if gpu_list:
         tf.config.experimental.set_visible_devices(gpu_list[hvd.local_rank()], "GPU")
 
     estimator = tf.estimator.Estimator(
         model_fn=model_fn,
-        params=global_config,
-        config=tf.estimator.RunConfig(
-            model_dir=global_config.model_dir, save_checkpoints_steps=global_config.viz_steps
-        ),
+        params=parameters,
+        config=tf.estimator.RunConfig(model_dir=parameters.model_dir, save_checkpoints_steps=parameters.viz_steps),
     )
 
-    # Horovod: BroadcastGlobalVariablesHook broadcasts initial variable states from rank 0 to all other processes.
+    # BroadcastGlobalVariablesHook broadcasts initial variable states from rank 0 to all other processes.
     # This is necessary to ensure consistent initialization of all workers when training is started with random weights
     # or restored from a checkpoint.
     broadcast_hook = hvd.BroadcastGlobalVariablesHook(0)
 
-    for _ in range(global_config.max_steps // global_config.viz_steps):
-        estimator.train(input_fn=train_input_fn, steps=global_config.viz_steps, hooks=[broadcast_hook])
-        eval_results = estimator.evaluate(input_fn=eval_input_fn)
+    for _ in range(parameters.max_steps // parameters.viz_steps):
+        estimator.train(input_fn=train_input_fn, steps=parameters.viz_steps, hooks=[broadcast_hook])
+        eval_results: Dict[str, Any] = estimator.evaluate(input_fn=eval_input_fn)  # type: ignore
 
         for key, value in eval_results.items():
-            print(f"{key}\n")
+            print(f"\n{key}")
             if key == "topics":
                 for topic in value:
-                    print(topic)
-                print("\n")
+                    print(topic.decode())
             else:
-                print(f"{str(value)}")
+                print(value)
 
 
 def main() -> None:
@@ -408,4 +424,9 @@ def main() -> None:
 
     :return: None
     """
-    spark.run(tensorflow_init)
+    # spark.run(tensorflow_init)
+    tensorflow_init()
+
+
+if __name__ == "__main__":
+    main()

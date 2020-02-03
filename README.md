@@ -7,29 +7,28 @@ Workload expectations:
 - **L**: 4 Day(s) - Large
 
 ### In Progress
-* L: Export an iterable model from TensorFlow training.
-* M: Export a TensorFlow.js friendly model.
-* L: Validate iteration of model across a number of runs.
-* M: Read from Google Cloud in Minikube, with Spark job storing numpy array in bucket.
-
-### Short-term
+* M: Revisit initial eml pipeline step, try to integrate with Spark.
+* S: Create Spark Structured Streaming equivalent of batch processor, awaiting events.
 * L: Complete summarization task on email bodies.
 
+### Short-term
+* M: Read from Google Cloud in Minikube, with Spark job storing numpy array in bucket.
+* L: Export an iterable model from TensorFlow training.
+* S: Serve models over API.
+
 ### Medium-term
+* L: Complete actionable email task on email bodies.
 * M: Use Terraform to create cluster, run Horovod code.
-* S: Create Spark Structured Streaming equivalent of batch processor, awaiting events.
 * S: Create event producer to crawl web for public emails. (scrapy)
 
 ### Long-term
-* L: Complete actionable email task on email bodies.
 * L: Create React PWA frontend which mimics email client.
-* S: Serve models over API.
+* M: Export a TensorFlow.js friendly model.
 * M: Serve model within JavaScript.
-* S: Airflow scheduling of batch jobs.
-* L: Monitoring solutions through Grafana and Prometheus.
 
 ### Optional
-* M: Revisit initial eml pipeline step, try to integrate with Spark.
+* S: Airflow scheduling of batch jobs.
+* L: Monitoring solutions through Grafana and Prometheus.
 * M: Integrate `cathal.dev` domain.
 * L: Continuous integration creating and destroying Terraform cluster.
 * M: Serve models using WebAssembly.

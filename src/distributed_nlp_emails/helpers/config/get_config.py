@@ -31,12 +31,7 @@ class Config:
     """
 
     # Generic
-    is_dev: bool = is_true("IS_DEV")
-
-    # Message Extraction
-    do_content_tagging: bool = is_true(getenv("DO_CONTENT_TAGGING"))
-    do_faker_replacement: bool = is_true(getenv("DO_FAKER_REPLACEMENT"))
-    do_address_hashing: bool = is_true(getenv("DO_ADDRESS_HASHING"))
+    is_dev: bool = is_true(getenv("IS_DEV"))
 
     # Kubernetes
     cluster_ip: str = str(getenv("CLUSTER_IP"))
@@ -44,10 +39,6 @@ class Config:
     # Google Cloud
     gcp_credentials: Path = Path(os.path.expanduser(str(getenv("GCP_CREDENTIALS")).strip()))
     gcp_project_id: str = str(getenv("GCP_PROJECT_ID"))
-
-    # Spark (Batch)
-    spark_gcp_credentials: str = str(getenv("SPARK_GCP_CREDENTIALS"))
-    spark_gcp_parquet: str = str(getenv("SPARK_GCP_PARQUET"))
 
 
 CONFIG = Config()

@@ -27,7 +27,9 @@ source venv/bin/activate
 # Update pip and install poetry
 pip install --upgrade pip
 pip install poetry
+
 poetry config virtualenvs.create true
+poetry config virtualenvs.in-project true
 
 # Install packages
 poetry update

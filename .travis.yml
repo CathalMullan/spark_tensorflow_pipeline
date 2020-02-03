@@ -1,3 +1,4 @@
+os: linux
 dist: bionic
 language: python
 python:
@@ -95,8 +96,5 @@ jobs:
         # Poetry
         - pip install poetry
         - poetry install -v
-
-        # Spacy Model
-        - poetry run download_spacy_model
       script:
         - pytest tests/

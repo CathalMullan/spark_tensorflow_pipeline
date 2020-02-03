@@ -1,5 +1,5 @@
 .PHONY: venv
-env:
+venv:
 	./scripts/init_environment.sh
 
 .PHONY: hook
