@@ -3,7 +3,7 @@ requires = ["poetry>=1.0"]
 build-backend = "poetry.masonry.api"
 
 [tool.poetry]
-name = "distributed_nlp_emails"
+name = "spark_tensorflow_pipeline"
 version = "0.0.1"
 description = """
 Applying Natural Language Processing (NLP) techniques to detect topics, summarize, and identify actionable emails in a
@@ -35,11 +35,11 @@ pyspark-stubs = "^2.4"
 
 [tool.poetry.scripts]
 # Spark Batch & TensorFlow
-topic_modelling_train = "distributed_nlp_emails.tensorflow.topic_modelling.train_model:main"
+topic_modelling_train = "spark_tensorflow_pipeline.tensorflow.topic_modelling.train_model:main"
 
 # Google Cloud
-gcp_upload = "distributed_nlp_emails.upload.gcp_upload:main"
-gcp_download = "distributed_nlp_emails.download.gcp_download:main"
+gcp_upload = "spark_tensorflow_pipeline.upload.gcp_upload:main"
+gcp_download = "spark_tensorflow_pipeline.download.gcp_download:main"
 
 [tool.taskipy.tasks]
 
@@ -52,4 +52,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["click", "dotenv", "google", "horovod", "numpy", "scipy", "tensorflow", "tensorflow_probability"]
+known_third_party = ["click", "dotenv", "google", "horovod", "numpy", "scipy", "spark_tensorflow_pipeline", "tensorflow", "tensorflow_probability"]

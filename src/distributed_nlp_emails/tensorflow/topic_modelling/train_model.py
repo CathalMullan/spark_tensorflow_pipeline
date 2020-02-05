@@ -12,9 +12,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.sparse import load_npz
+from spark_tensorflow_pipeline.helpers.globals.directories import MODELS_DIR, PROCESSED_DIR
 from tensorflow_probability import distributions as tfd
-
-from distributed_nlp_emails.helpers.globals.directories import MODELS_DIR, PROCESSED_DIR
 
 
 class Parameters:

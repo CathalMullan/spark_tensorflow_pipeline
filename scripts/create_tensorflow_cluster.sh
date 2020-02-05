@@ -32,7 +32,7 @@ spark-submit \
     --conf spark.executor.instances=2 \
     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
     --conf spark.kubernetes.container.image=dnlp-pyspark \
-    /src/distributed_nlp_emails/job/topic_modelling_processing.py
+    /src/spark_tensorflow_pipeline/job/topic_modelling_processing.py
 
 # View Spark Dashboard
 kubectl get pod

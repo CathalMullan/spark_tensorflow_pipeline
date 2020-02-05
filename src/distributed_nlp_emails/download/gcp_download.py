@@ -7,8 +7,7 @@ from pathlib import Path
 
 import click
 from google.cloud import storage
-
-from distributed_nlp_emails.helpers.config.get_config import CONFIG
+from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
 
 
 @click.command()
