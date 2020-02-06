@@ -6,13 +6,17 @@ build-backend = "poetry.masonry.api"
 name = "spark_tensorflow_pipeline"
 version = "0.0.1"
 description = """
-Applying Natural Language Processing (NLP) techniques to detect topics, summarize, and identify actionable emails in a
-distributed fashion using Spark and TensorFlow
+Spark pipeline to run TensorFlow machine learning code using Horovod.
 """
-authors = ["Cathal Mullan <cmullan@proofpoint.com>"]
+authors = [
+    "Cathal Mullan <cmullan@proofpoint.com>"
+]
+license = "Apache-2.0"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.7.*"
+taskipy = "^1.1.0"
 pyspark = "^2.4"
 numpy = "^1.17"
 python-dotenv = "^0.10.3"
@@ -22,7 +26,6 @@ google-cloud-storage = "^1.24.1"
 click = "^7.0"
 google-auth = "^1.10.1"
 setuptools = "^45.1.0"
-taskipy = "^1.1.0"
 horovod = "^0.19.0"
 fastapi = "^0.47.1"
 uvicorn = "^0.11.2"
@@ -42,6 +45,10 @@ gcp_upload = "spark_tensorflow_pipeline.upload.gcp_upload:main"
 gcp_download = "spark_tensorflow_pipeline.download.gcp_download:main"
 
 [tool.taskipy.tasks]
+hook = "pre-commit autoupdate && pre-commit install"
+lint = "pre-commit run --all-files"
+test = "pytest tests/"
+validate = "task lint && task test"
 
 [tool.black]
 line-length = 120
@@ -52,4 +59,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["click", "dotenv", "google", "horovod", "numpy", "scipy", "spark_tensorflow_pipeline", "tensorflow", "tensorflow_probability"]
+known_third_party = ["click", "dotenv", "google", "horovod", "numpy", "scipy", "tensorflow", "tensorflow_probability"]

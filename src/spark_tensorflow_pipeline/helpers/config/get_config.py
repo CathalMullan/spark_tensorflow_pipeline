@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
+
 from spark_tensorflow_pipeline.helpers.globals.directories import PROJECT_DIR
 
 load_dotenv(dotenv_path=f"{PROJECT_DIR}/.env")

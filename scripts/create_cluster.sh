@@ -21,18 +21,11 @@ kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount
 export SPARK_HOME=/opt/spark-3.0
 (cd ${SPARK_HOME} && ./bin/docker-image-tool.sh -t spark -p ./kubernetes/dockerfiles/spark/bindings/python/Dockerfile build)
 
-# Build custom image (dnlp-pyspark)
-docker build . -t dnlp-pyspark
+# Build custom image
+docker build . -t spark_tensorflow_pipeline
 
-# Test job with
-spark-submit \
-    --master k8s://https://$(minikube ip):8443 \
-    --deploy-mode cluster \
-    --name processing \
-    --conf spark.executor.instances=2 \
-    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
-    --conf spark.kubernetes.container.image=dnlp-pyspark \
-    /src/spark_tensorflow_pipeline/job/topic_modelling_processing.py
+# Run job
+...
 
 # View Spark Dashboard
 kubectl get pod

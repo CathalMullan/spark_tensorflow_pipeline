@@ -7,6 +7,7 @@ from pathlib import Path
 import click
 from google.api_core.exceptions import Conflict
 from google.cloud import storage
+
 from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
 
 

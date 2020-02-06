@@ -3,6 +3,9 @@ FROM spark-py:spark
 
 ARG PYTHON_VERSION=3.7.5
 ARG PYENV_HOME=/root/.pyenv
+ARG POETRY_VERSION=1.0.2
+ARG DEBIAN_FRONTEND=noninteractive
+
 ENV PYTHONUNBUFFERED=1
 
 USER root
@@ -36,8 +39,7 @@ RUN pip install --upgrade pip
 RUN pyenv rehash
 
 # Install Poetry
-RUN pip install poetry
-RUN pip install --upgrade pip setuptools
+RUN pip install poetry==${POETRY_VERSION}
 
 # 10.0-base-ubuntu18.04
 # https://gitlab.com/nvidia/container-images/cuda/blob/ubuntu18.04/10.0/base/Dockerfile
@@ -121,7 +123,7 @@ RUN apt-get update && apt-get install -y --allow-downgrades --allow-change-held-
 
 # Install TensorFlow and HDF5
 RUN pip install \
-    tensorflow-gpu==${TENSORFLOW_VERSION} \
+    tensorflow==${TENSORFLOW_VERSION} \
     h5py
 
 # Install Open MPI
@@ -142,9 +144,12 @@ RUN ldconfig /usr/local/cuda/targets/x86_64-linux/lib/stubs && \
     pip install horovod && \
     ldconfig
 
-# Install Package
-WORKDIR /
-COPY . /
+# Install Dependencies & Project
+WORKDIR /app
 
+COPY pyproject.toml poetry.lock /app/
 RUN poetry config virtualenvs.create false
+RUN poetry install
+
+COPY . /app
 RUN poetry install
