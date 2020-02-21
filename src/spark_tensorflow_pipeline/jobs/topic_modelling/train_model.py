@@ -11,6 +11,7 @@ import horovod.tensorflow as hvd
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
+from horovod import spark
 from scipy.sparse import load_npz
 from tensorflow_probability import distributions as tfd
 
@@ -381,7 +382,7 @@ def tensorflow_init() -> None:
         parameters.model_dir = None
 
     train_input_fn, eval_input_fn, vocabulary = build_input_fns(
-        data_dir=f"{PROCESSED_DIR}", batch_size=parameters.batch_size
+        data_dir=PROCESSED_DIR, batch_size=parameters.batch_size
     )
 
     parameters.vocabulary = vocabulary
@@ -424,8 +425,7 @@ def main() -> None:
 
     :return: None
     """
-    # spark.run(tensorflow_init)
-    tensorflow_init()
+    spark.run(tensorflow_init)
 
 
 if __name__ == "__main__":

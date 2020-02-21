@@ -1,11 +1,11 @@
-## Custom ##
+## Custom
 data/*
 !data/.gitkeep
 
 models/*
 !/models/.gitkeep
 
-## Auto Generated ##
+## Generated
 # Created by https://www.gitignore.io/api/venv,python,intellij+all
 # Edit at https://www.gitignore.io/?templates=venv,python,intellij+all
 
@@ -215,5 +215,5 @@ pip-selfcheck.json
 
 # End of https://www.gitignore.io/api/venv,python,intellij+all
 
-## Override ##
+## Override
 !.env
