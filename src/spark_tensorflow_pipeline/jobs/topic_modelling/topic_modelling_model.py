@@ -1,7 +1,8 @@
 """
 Pipeline for topic modelling.
 
-See https://git.io/Jvsyn
+See
+    - https://git.io/Jvsyn
 """
 import functools
 import pickle  # nosec
@@ -402,8 +403,8 @@ def tensorflow_init() -> None:
     )
 
     # BroadcastGlobalVariablesHook broadcasts initial variable states from rank 0 to all other processes.
-    # This is necessary to ensure consistent initialization of all workers when training is started with random weights
-    # or restored from a checkpoint.
+    # This is necessary to ensure consistent initialization of all workers when training with random weights or restored
+    # from a checkpoint.
     broadcast_hook = hvd.BroadcastGlobalVariablesHook(0)
 
     for _ in range(parameters.max_steps // parameters.viz_steps):
