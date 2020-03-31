@@ -5,6 +5,8 @@ data/*
 models/*
 !/models/.gitkeep
 
+!words.txt
+
 ## Generated
 # Created by https://www.gitignore.io/api/venv,python,intellij+all
 # Edit at https://www.gitignore.io/?templates=venv,python,intellij+all

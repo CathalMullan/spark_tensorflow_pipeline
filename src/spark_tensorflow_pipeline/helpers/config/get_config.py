@@ -1,7 +1,6 @@
 """
-Parse environment into config.
+Parse environment into a config object.
 """
-import os
 from dataclasses import dataclass
 from os import getenv
 from pathlib import Path
@@ -33,12 +32,21 @@ class Config:
     # Generic
     is_dev: bool = is_true(getenv("IS_DEV"))
 
-    # Kubernetes
-    cluster_ip: str = str(getenv("CLUSTER_IP"))
-
     # Google Cloud
-    gcp_credentials: Path = Path(os.path.expanduser(str(getenv("GCP_CREDENTIALS")).strip()))
-    gcp_project_id: str = str(getenv("GCP_PROJECT_ID"))
+    gcp_credentials: Path = Path(str(getenv("GCP_CREDENTIALS")))
+
+    # Bucket
+    bucket_parquet: str = str(getenv("BUCKET_PARQUET"))
+
+    # Dictionary
+    dictionary_path: str = PROJECT_DIR + "/words.txt"
+
+    # Topic Modelling
+    bucket_topic_model: str = str(getenv("BUCKET_TOPIC_MODEL"))
+    bucket_saved_topic_model: str = str(getenv("BUCKET_SAVED_TOPIC_MODEL"))
+
+    # Process Date
+    process_date: Optional[str] = getenv("PROCESS_DATE")
 
 
 CONFIG = Config()
