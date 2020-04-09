@@ -29,6 +29,12 @@ pandas = "^1.0.3"
 horovod = "^0.19.1"
 pyarrow = "^0.16.0"
 dataclasses = "^0.7"
+nltk = "^3.4.5"
+gensim = "3.3.0"
+torch = "1.4.0"
+mxnet = "1.6.0"
+matplotlib = "^3.2.1"
+keras = "^2.3.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
@@ -48,4 +54,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["dotenv", "gcsfs", "horovod", "numpy", "scipy", "sklearn", "spacy", "tensorflow", "tensorflow_probability"]
+known_third_party = ["dotenv", "gcsfs", "horovod", "keras", "matplotlib", "numpy", "pandas", "scipy", "sklearn", "spacy", "tensorflow", "tensorflow_probability"]
