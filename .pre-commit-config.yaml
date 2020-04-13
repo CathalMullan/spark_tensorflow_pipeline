@@ -1,7 +1,7 @@
 default_stages: [commit, push]
 
 default_language_version:
-  python: python3.7
+  python: python3.6
 
 fail_fast: false
 
@@ -117,4 +117,8 @@ repos:
           --disable=W0212,
           # Ignore false positive import warnings
           --disable=E0401,
+          # Allow nested blocks
+          --disable=R1702,
+          # Allow many arguments
+          --disable=R0913,
         ]

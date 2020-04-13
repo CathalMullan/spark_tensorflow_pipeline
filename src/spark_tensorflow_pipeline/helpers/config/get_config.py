@@ -1,11 +1,11 @@
 """
 Parse environment into a config object.
 """
-from dataclasses import dataclass
 from os import getenv
 from pathlib import Path
 from typing import Optional
 
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 from spark_tensorflow_pipeline.helpers.globals.directories import PROJECT_DIR

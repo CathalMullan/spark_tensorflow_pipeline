@@ -5,6 +5,9 @@ data/*
 models/*
 !/models/.gitkeep
 
+logs/*
+!/logs/.gitkeep
+
 !words.txt
 
 ## Generated

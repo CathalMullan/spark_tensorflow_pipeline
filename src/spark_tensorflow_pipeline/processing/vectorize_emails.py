@@ -2,30 +2,17 @@
 Read in Parquet file containing processed eml data, and vectorize to Numpy arrays.
 """
 import string
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import spacy
 from spacy.tokens.token import Token
 
-from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
+from spark_tensorflow_pipeline.jobs.utils import WORD_TO_INDEX_DICTIONARY
 
 # https://blog.dominodatalab.com/making-pyspark-work-spacy-overcoming-serialization-errors/
 # spaCy isn't serializable but loading it is semi-expensive
+
 SPACY = spacy.load("en_core_web_sm")
-
-
-def build_dictionary() -> Dict[str, int]:
-    """
-    Read static dictionary text file and create vocabulary of terms.
-
-    :return:
-    """
-    dictionary_set = sorted(set(line.strip().lower() for line in open(CONFIG.dictionary_path)))
-    dictionary_dict = {value: key for key, value in enumerate(dictionary_set)}
-    return dictionary_dict
-
-
-DICTIONARY = build_dictionary()
 
 
 def is_valid_token(token: Token) -> bool:
@@ -41,7 +28,7 @@ def is_valid_token(token: Token) -> bool:
     if len(token.pos_) <= 2 or len(token.lemma_) <= 2:
         return False
 
-    if token.lemma_.lower() not in DICTIONARY.keys():
+    if token.lemma_.lower() not in WORD_TO_INDEX_DICTIONARY.keys():
         return False
 
     return True

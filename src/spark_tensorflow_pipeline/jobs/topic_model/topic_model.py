@@ -21,7 +21,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from tensorflow_probability import distributions as tfd
 
 from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
-from spark_tensorflow_pipeline.processing.vectorize_emails import DICTIONARY, build_dictionary, text_lemmatize_and_lower
+from spark_tensorflow_pipeline.jobs.utils import INDEX_TO_WORD_DICTIONARY
+from spark_tensorflow_pipeline.processing.vectorize_emails import text_lemmatize_and_lower
 
 FILESYSTEM = gcsfs.GCSFileSystem()
 
@@ -293,7 +294,7 @@ def parse_dataset(matrix: Union[str, csr_matrix], num_words: int, shuffle_and_re
     Return dataset as tf.data.Dataset.
 
     :param matrix: path to npz file in Google Storage or npz matrix.
-    :param num_words: number of words in the dictionary
+    :param num_words: number of words in the INDEX_TO_WORD_DICTIONARY
     :param shuffle_and_repeat: whether to shuffle and repeat the epoch
     :return: dataset as tf.data.Dataset
     """
@@ -349,8 +350,7 @@ def build_input_fns(
         - A function that returns an iterator over the evaluation data.
         - A mapping of word's integer index to the corresponding string.
     """
-    raw_vocabulary: Dict[str, int] = build_dictionary()
-    vocabulary: Dict[int, str] = dict((value, key) for key, value in raw_vocabulary.items())
+    vocabulary: Dict[int, str] = INDEX_TO_WORD_DICTIONARY
     num_words = len(vocabulary)
 
     # Either process yesterdays data or a specific date.
@@ -403,13 +403,13 @@ def serving_input_receiver_fn(input_text: str) -> tf.Tensor:
     processed_text: List[str] = [",".join(map(str, line)) for line in lemmatized_text]
 
     vectorizer = CountVectorizer(
-        decode_error="replace", strip_accents="unicode", lowercase="true", vocabulary=DICTIONARY
+        decode_error="replace", strip_accents="unicode", lowercase="true", vocabulary=INDEX_TO_WORD_DICTIONARY
     )
 
     text_document = vectorizer.fit_transform(processed_text)
     input_data: csr_matrix = text_document[:, :].astype(np.float32)
     input_dataset: tf.data.Dataset = parse_dataset(
-        matrix=input_data, num_words=len(DICTIONARY), shuffle_and_repeat=False
+        matrix=input_data, num_words=len(INDEX_TO_WORD_DICTIONARY), shuffle_and_repeat=False
     )
 
     return tf.estimator.export.ServingInputReceiver(features=input_dataset, receiver_tensors=receiver_tensors)

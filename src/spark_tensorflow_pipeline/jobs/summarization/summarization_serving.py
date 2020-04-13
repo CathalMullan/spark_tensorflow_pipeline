@@ -1,39 +1,39 @@
 """
-
+Load and serve summarization model.
 """
-import pandas as pd
+from typing import Any, Dict
+
 import numpy as np
 
-from spark_tensorflow_pipeline.jobs.summarization.seq2seq import Seq2SeqSummarizer
+from spark_tensorflow_pipeline.helpers.globals.directories import MODELS_DIR
+from spark_tensorflow_pipeline.jobs.summarization.summarization_config import Seq2SeqConfig
+from spark_tensorflow_pipeline.jobs.summarization.summarization_model import Seq2SeqSummarizer, load_data
 
 
-def main():
+def main() -> None:
     """
+    Load and serve summarization model.
 
-    :return:
+    :return: None
     """
-    data_dir_path = './data'
-    model_dir_path = './models'
+    print("Loading input data.")
+    subject_list, body_list = load_data()
 
-    print('loading csv file ...')
-    df = pd.read_csv(data_dir_path + "/fake_or_real_news.csv")
-    x = df['text']
-    y = df.title
+    config_file: str = Seq2SeqSummarizer.get_config_file_path(model_dir_path=f"{MODELS_DIR}/summarization")
+    # noinspection PyTypeChecker
+    raw_config: Dict[str, Any] = np.load(config_file, allow_pickle=True).item()  # type: ignore
 
-    config = np.load(Seq2SeqSummarizer.get_config_file_path(model_dir_path=model_dir_path)).item()
+    config: Seq2SeqConfig = Seq2SeqConfig(**raw_config)
+    summarizer: Seq2SeqSummarizer = Seq2SeqSummarizer(config)
 
-    summarizer = Seq2SeqSummarizer(config)
-    summarizer.load_weights(weight_file_path=Seq2SeqSummarizer.get_weight_file_path(model_dir_path=model_dir_path))
+    weight_file: str = Seq2SeqSummarizer.get_weight_file_path(model_dir_path=f"{MODELS_DIR}/summarization")
+    summarizer.load_weights(weight_file_path=weight_file)
 
-    print('start predicting ...')
-    for i in np.random.permutation(np.arange(len(x)))[0:20]:
-        article = x[i]
-        actual_headline = y[i]
-        headline = summarizer.summarize(x)
-        print('Article: ', article)
-        print('Generated Headline: ', headline)
-        print('Original Headline: ', actual_headline)
+    print("Starting predicting.")
+    for index, _ in enumerate(body_list):
+        print(f"Generated Subject: {summarizer.summarize(body_list[index])}")
+        print(f"Expected Subject: {subject_list[index]}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
