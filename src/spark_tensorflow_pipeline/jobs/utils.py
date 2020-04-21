@@ -10,7 +10,7 @@ def build_word_to_index_dictionary() -> Dict[str, int]:
     """
     Read static dictionary text file and create vocabulary of terms.
 
-    :return:
+    :return: dictionary mapping words to indexes
     """
     dictionary_set = sorted(set(line.strip().lower() for line in open(CONFIG.dictionary_path)))
     dictionary_dict = {value: key for key, value in enumerate(dictionary_set)}
@@ -21,7 +21,7 @@ def build_index_to_word_dictionary() -> Dict[int, str]:
     """
     Read static dictionary text file and create vocabulary of terms.
 
-    :return:
+    :return: dictionary mapping indexes to words
     """
     dictionary_set = sorted(set(line.strip().lower() for line in open(CONFIG.dictionary_path)))
     # pylint: disable=unnecessary-comprehension

@@ -9,6 +9,7 @@ import os
 import pickle  # nosec
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import gcsfs
@@ -17,16 +18,14 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from scipy.sparse import csr_matrix
-from sklearn.feature_extraction.text import CountVectorizer
 from tensorflow_probability import distributions as tfd
 
 from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
-from spark_tensorflow_pipeline.jobs.utils import INDEX_TO_WORD_DICTIONARY
-from spark_tensorflow_pipeline.processing.vectorize_emails import text_lemmatize_and_lower
+from spark_tensorflow_pipeline.jobs.utils import WORD_TO_INDEX_DICTIONARY
 
 FILESYSTEM = gcsfs.GCSFileSystem()
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.DEBUG)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "0"
 
 
@@ -41,10 +40,9 @@ class Parameters:
     num_topics: int = 50
     activation: str = "relu"
     prior_initial_value: float = 0.7
-    prior_burn_in_steps: int = 12_000
+    prior_burn_in_steps: int = 1_200
     viz_steps: int = 1_000
     model_dir: Optional[str] = CONFIG.bucket_topic_model
-    saved_model_dir: Optional[str] = CONFIG.bucket_saved_topic_model
     vocabulary: Dict[int, str] = {}
     batch_size: int = 32
 
@@ -170,13 +168,6 @@ def model_fn(features: tf.Tensor, mode: tf.estimator.ModeKeys, params: Parameter
     topics = topics_posterior.sample()
     random_reconstruction = decoder(topics)
 
-    # Return prediction when serving.
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = {
-            "predicted": topics,
-        }
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
-
     reconstruction = random_reconstruction.log_prob(features)
     tf.summary.scalar("reconstruction", tf.reduce_mean(input_tensor=reconstruction))
 
@@ -197,10 +188,14 @@ def model_fn(features: tf.Tensor, mode: tf.estimator.ModeKeys, params: Parameter
 
     # Perform variational inference by minimizing the -ELBO.
     global_step = tf.compat.v1.train.get_or_create_global_step()
-    optimizer = tf.compat.v1.train.AdamOptimizer(params.learning_rate)
 
     # Add Horovod Distributed Optimizer.
-    optimizer = hvd.DistributedOptimizer(optimizer)
+    try:
+        optimizer = tf.compat.v1.train.AdamOptimizer(params.learning_rate * hvd.size())
+        optimizer = hvd.DistributedOptimizer(optimizer)
+    except ValueError:
+        optimizer = tf.compat.v1.train.AdamOptimizer(params.learning_rate)
+        print("Running outside of Horovod.")
 
     # This implements the "burn-in" for prior parameters
     # For the first prior_burn_in_steps steps they are fixed, and then trained jointly with the other parameters.
@@ -243,6 +238,10 @@ def model_fn(features: tf.Tensor, mode: tf.estimator.ModeKeys, params: Parameter
         Tout=tf.string,
     )
 
+    # Return prediction when serving.
+    if mode == tf.estimator.ModeKeys.PREDICT:
+        return tf.estimator.EstimatorSpec(mode=mode, predictions=topics)
+
     tf.compat.v1.summary.text("topics", topics)
 
     return tf.estimator.EstimatorSpec(
@@ -277,14 +276,14 @@ def get_topics_strings(topics_words: tf.Tensor, alpha: tf.Tensor, vocabulary: Di
     top_words = np.argsort(-topics_words, axis=1)
 
     # Use string formatting to print a table of results.
-    topics: List[str] = [f"{'index':<8} {'name':<20} {'alpha':<8} {'words':<120}"]
+    topics: List[str] = [f"index name alpha words"]
 
-    for topic_index in highest_weight_topics[:20]:
+    for topic_index in highest_weight_topics[:10]:
         topic_name: str = vocabulary[top_words[topic_index][0]]
         topic_alpha: str = f"{round(alpha[topic_index], ndigits=4):.2f}"
         topic_words: str = " ".join([vocabulary[word] for word in top_words[topic_index, :10]])
 
-        topics.append(f"{topic_index:<8} {topic_name:<20} {topic_alpha:<8} {topic_words:<120}")
+        topics.append(f"{topic_index} {topic_name} {topic_alpha} {topic_words}")
 
     return np.array(topics)
 
@@ -294,14 +293,18 @@ def parse_dataset(matrix: Union[str, csr_matrix], num_words: int, shuffle_and_re
     Return dataset as tf.data.Dataset.
 
     :param matrix: path to npz file in Google Storage or npz matrix.
-    :param num_words: number of words in the INDEX_TO_WORD_DICTIONARY
+    :param num_words: number of words in the WORD_TO_INDEX_DICTIONARY
     :param shuffle_and_repeat: whether to shuffle and repeat the epoch
     :return: dataset as tf.data.Dataset
     """
     if isinstance(matrix, str):
-        print(f"Downloading: {matrix}")
-        with FILESYSTEM.open(matrix) as file:
-            sparse_matrix = pickle.load(file)  # nosec
+        print(f"Gathering: {matrix}")
+        if CONFIG.is_dev:
+            with open(matrix, "rb") as file:
+                sparse_matrix = pickle.load(file)  # nosec
+        else:
+            with FILESYSTEM.open(matrix) as file:
+                sparse_matrix = pickle.load(file)  # nosec
     else:
         sparse_matrix = matrix
 
@@ -350,13 +353,17 @@ def build_input_fns(
         - A function that returns an iterator over the evaluation data.
         - A mapping of word's integer index to the corresponding string.
     """
-    vocabulary: Dict[int, str] = INDEX_TO_WORD_DICTIONARY
+    raw_vocabulary: Dict[str, int] = WORD_TO_INDEX_DICTIONARY
+    vocabulary: Dict[int, str] = dict((value, key) for key, value in raw_vocabulary.items())
     num_words = len(vocabulary)
 
     # Either process yesterdays data or a specific date.
     if not CONFIG.process_date:
-        yesterdays_date = datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d")
-        data_source = f"{CONFIG.bucket_parquet}matrix_date={yesterdays_date}/"
+        if CONFIG.is_dev:
+            data_source = f"{CONFIG.bucket_parquet}"
+        else:
+            yesterdays_date = datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d")
+            data_source = f"{CONFIG.bucket_parquet}matrix_date={yesterdays_date}/"
     else:
         data_source = f"{CONFIG.bucket_parquet}matrix_date={CONFIG.process_date}"
 
@@ -389,32 +396,6 @@ def build_input_fns(
     return train_input_fn, eval_input_fn, vocabulary
 
 
-def serving_input_receiver_fn(input_text: str) -> tf.Tensor:
-    """
-    Process raw text into vectorized numpy text.
-
-    :param input_text: raw body text
-    :return: processed text in a float tensor.
-    """
-    inputs = tf.Variable(dtype=tf.string, name="body")
-    receiver_tensors = {"body": inputs}
-
-    lemmatized_text: List[str] = text_lemmatize_and_lower(input_text)
-    processed_text: List[str] = [",".join(map(str, line)) for line in lemmatized_text]
-
-    vectorizer = CountVectorizer(
-        decode_error="replace", strip_accents="unicode", lowercase="true", vocabulary=INDEX_TO_WORD_DICTIONARY
-    )
-
-    text_document = vectorizer.fit_transform(processed_text)
-    input_data: csr_matrix = text_document[:, :].astype(np.float32)
-    input_dataset: tf.data.Dataset = parse_dataset(
-        matrix=input_data, num_words=len(INDEX_TO_WORD_DICTIONARY), shuffle_and_repeat=False
-    )
-
-    return tf.estimator.export.ServingInputReceiver(features=input_dataset, receiver_tensors=receiver_tensors)
-
-
 def main() -> None:
     """
     Pipeline for topic modelling.
@@ -429,8 +410,10 @@ def main() -> None:
 
     # Only save model in primary Horovod pod.
     if hvd.rank() == 0:
-        tf.io.gfile.makedirs(parameters.model_dir)
-        tf.io.gfile.makedirs(parameters.saved_model_dir)
+        if CONFIG.is_dev:
+            Path(CONFIG.bucket_topic_model).mkdir(parents=True, exist_ok=True)
+        else:
+            tf.io.gfile.makedirs(parameters.model_dir)
     else:
         parameters.model_dir = None
 
@@ -453,6 +436,15 @@ def main() -> None:
         config=tf.estimator.RunConfig(model_dir=parameters.model_dir, save_checkpoints_steps=parameters.viz_steps),
     )
 
+    try:
+        global_step = estimator.get_variable_value("global_step")
+        if global_step > parameters.max_steps:
+            max_steps = global_step + 10_000
+            print(f"Increasing max steps to {max_steps}")
+            parameters.max_steps = max_steps
+    except ValueError:
+        print("No existing checkpoint step.")
+
     # BroadcastGlobalVariablesHook broadcasts initial variable states from rank 0 to all other processes.
     # This is necessary to ensure consistent initialization of all workers when training with random weights or restored
     # from a checkpoint.
@@ -463,11 +455,8 @@ def main() -> None:
     for iteration in range(iterations):
         start_time = time.time()
         estimator.train(input_fn=train_input_fn, steps=parameters.viz_steps, hooks=[broadcast_hook])
-        eval_results: Dict[str, Any] = estimator.evaluate(input_fn=eval_input_fn)  # type: ignore
-
-        # Export 'saved_model' for predictions.
-        estimator.export_saved_model(
-            export_dir_base=parameters.saved_model_dir, serving_input_receiver_fn=serving_input_receiver_fn
+        eval_results: Dict[str, Any] = estimator.evaluate(  # type: ignore
+            input_fn=eval_input_fn, steps=parameters.viz_steps
         )
 
         for key, value in eval_results.items():

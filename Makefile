@@ -7,24 +7,19 @@ hook:
 lint:
 	pre-commit run --all-files | tee logs/lint.txt
 
-.PHONY: test
-test:
-	pytest tests/ | tee logs/test.txt
-
 .PHONY: validate
 validate:
 	make lint
-	make test
 
 .PHONY: docker_image
 docker_image:
-	docker build -t spark_tensorflow_pipeline -f gpu.Dockerfile .
+	docker build -t api -f gpu.Dockerfile .
 
 .PHONY: docker_publish
 docker_publish:
 	make docker_image
-	docker tag spark_tensorflow_pipeline:latest gcr.io/distributed-email-pipeline/spark_tensorflow_pipeline:latest
-	docker push gcr.io/distributed-email-pipeline/spark_tensorflow_pipeline:latest
+	docker tag api:latest gcr.io/distributed-email-pipeline/api:latest
+	docker push gcr.io/distributed-email-pipeline/api:latest
 
 .PHONY: dev_image
 dev_docker_image:
@@ -89,3 +84,12 @@ summarization_dev:
             ^openib \
             python \
             /app/src/spark_tensorflow_pipeline/jobs/summarization/summarization_model.py
+
+.PHONY: serve_api
+serve_api:
+	docker run \
+		--env-file .env \
+		-v ~/.config/gcloud/gcp_service_account.json:/etc/secrets/gcp_service_account.json \
+		-it api \
+			uvicorn \
+			spark_tensorflow_pipeline.serving.api:APP

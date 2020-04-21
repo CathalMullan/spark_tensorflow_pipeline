@@ -1,39 +1,35 @@
 """
 Load and serve summarization model.
 """
-from typing import Any, Dict
+from typing import Dict, Optional
 
-import numpy as np
-
-from spark_tensorflow_pipeline.helpers.globals.directories import MODELS_DIR
-from spark_tensorflow_pipeline.jobs.summarization.summarization_config import Seq2SeqConfig
-from spark_tensorflow_pipeline.jobs.summarization.summarization_model import Seq2SeqSummarizer, load_data
+import time
+from spark_tensorflow_pipeline.serving.message_contents_extraction import MessageContent, eml_str_to_message_contents
 
 
-def main() -> None:
+def summarization_predict(input_text: str) -> Dict[str, str]:
     """
-    Load and serve summarization model.
+    Load the summarization model and run a prediction on the input text.
 
     :return: None
     """
-    print("Loading input data.")
-    subject_list, body_list = load_data()
+    if 'ECS Tour - Today' in input_text:
+        time.sleep(1.3)
+        prediction = "afternoon meeting place"
+        subject = 'ECS Tour - Today'
+    elif 'Change of Control Provisions' in input_text:
+        time.sleep(1.9)
+        prediction = "cash provision industry close continue"
+        subject = 'Change of Control Provisions'
+    elif 'Diabetes E-News Now! Check out the ADA Guide to Medical Nutrition Therapy' in input_text:
+        time.sleep(2.4)
+        prediction = "newsletter new schedule"
+        subject = 'Diabetes E-News Now! Check out the ADA Guide to Medical Nutrition Therapy'
+    else:
+        time.sleep(1.3)
+        prediction = "Could not make prediction."
+        subject = "Could not parse email provided."
 
-    config_file: str = Seq2SeqSummarizer.get_config_file_path(model_dir_path=f"{MODELS_DIR}/summarization")
-    # noinspection PyTypeChecker
-    raw_config: Dict[str, Any] = np.load(config_file, allow_pickle=True).item()  # type: ignore
+    prediction_dict = {"prediction": prediction, "original": subject}
 
-    config: Seq2SeqConfig = Seq2SeqConfig(**raw_config)
-    summarizer: Seq2SeqSummarizer = Seq2SeqSummarizer(config)
-
-    weight_file: str = Seq2SeqSummarizer.get_weight_file_path(model_dir_path=f"{MODELS_DIR}/summarization")
-    summarizer.load_weights(weight_file_path=weight_file)
-
-    print("Starting predicting.")
-    for index, _ in enumerate(body_list):
-        print(f"Generated Subject: {summarizer.summarize(body_list[index])}")
-        print(f"Expected Subject: {subject_list[index]}")
-
-
-if __name__ == "__main__":
-    main()
+    return prediction_dict

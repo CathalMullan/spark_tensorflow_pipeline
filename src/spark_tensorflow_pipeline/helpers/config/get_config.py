@@ -43,7 +43,9 @@ class Config:
 
     # Topic Modelling
     bucket_topic_model: str = str(getenv("BUCKET_TOPIC_MODEL"))
-    bucket_saved_topic_model: str = str(getenv("BUCKET_SAVED_TOPIC_MODEL"))
+
+    # Summarization
+    bucket_summarization_model: str = str(getenv("BUCKET_SUMMARIZATION_MODEL"))
 
     # Process Date
     process_date: Optional[str] = getenv("PROCESS_DATE")

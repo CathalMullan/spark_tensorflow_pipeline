@@ -6,10 +6,10 @@ from typing import Counter as CounterType, Dict, List
 
 from dataclasses import dataclass
 
-MAX_BODY_LENGTH = 5000
+MAX_BODY_LENGTH = 500
 MAX_SUBJECT_LENGTH = 50
-MAX_BODY_VOCAB = 500_000
-MAX_SUBJECT_VOCAB = 20_000
+MAX_BODY_VOCAB = 50_000
+MAX_SUBJECT_VOCAB = 2_000
 
 
 @dataclass
@@ -51,7 +51,7 @@ def fit_text(body_list: List[str], subject_list: List[str]) -> Seq2SeqConfig:
         max_body_length = max(max_body_length, body_length)
 
     for subject in subject_list:
-        text: List[str] = f"START {subject.lower()} END".split(" ")
+        text: List[str] = f"START_TAG {subject.lower()} END_TAG".split(" ")
         subject_length: int = len(text)
         if subject_length > MAX_SUBJECT_LENGTH:
             continue
@@ -65,19 +65,16 @@ def fit_text(body_list: List[str], subject_list: List[str]) -> Seq2SeqConfig:
     body_word_to_index["PAD"] = 0
     body_word_to_index["UNK"] = 1
 
-    body_index_to_word: Dict[int, str] = {index: word for word, index in body_word_to_index.items()}
-    # body_index_to_word: Dict[int, str] = dict([(index, word) for word, index in body_word_to_index.items()])
-
     subject_word_to_index: Dict[str, int] = {}
-    for index, word in enumerate(body_counter.most_common(MAX_SUBJECT_LENGTH)):  # type: ignore
+    for index, word in enumerate(subject_counter.most_common(MAX_SUBJECT_LENGTH)):  # type: ignore
         subject_word_to_index[word[0]] = index + 1
     subject_word_to_index["UNK"] = 0
 
-    subject_index_to_word: Dict[int, str] = {index: word for word, index in subject_word_to_index.items()}
-    # subject_index_to_word: Dict[int, str] = dict([(index, word) for word, index in subject_word_to_index.items()])
-
     body_count: int = len(body_word_to_index)
     subject_count: int = len(subject_word_to_index)
+
+    body_index_to_word: Dict[int, str] = {index: word for word, index in body_word_to_index.items()}
+    subject_index_to_word: Dict[int, str] = {index: word for word, index in subject_word_to_index.items()}
 
     return Seq2SeqConfig(
         body_word_to_index=body_word_to_index,

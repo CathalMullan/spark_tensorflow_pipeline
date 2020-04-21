@@ -2,13 +2,13 @@
 Pipeline for text summarization.
 
 See:
-    - https://github.com/chen0040/keras-text-summarization\
+    - https://github.com/chen0040/keras-text-summarization
     - https://keras.io/examples/lstm_seq2seq/
     - https://keras.io/examples/lstm_seq2seq_restore/
 """
 import math
-import os
 from datetime import datetime, timedelta
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Generator, List, Tuple
 
@@ -25,12 +25,17 @@ from tensorflow.keras.callbacks import ModelCheckpoint
 from tensorflow.keras.layers import LSTM, Dense, Embedding
 from tensorflow.keras.optimizers import RMSprop
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tqdm import tqdm
 
 from spark_tensorflow_pipeline.helpers.config.get_config import CONFIG
-from spark_tensorflow_pipeline.helpers.globals.directories import MODELS_DIR
 from spark_tensorflow_pipeline.jobs.summarization.summarization_config import Seq2SeqConfig, fit_text
+from spark_tensorflow_pipeline.processing.vectorize_emails import text_lemmatize_and_lower
 
 FILESYSTEM = gcsfs.GCSFileSystem()
+
+LOCAL_MODEL_WEIGHTS = f"{CONFIG.bucket_summarization_model}seq2seq-weights.h5"
+LOCAL_MODEL_CONFIG = f"{CONFIG.bucket_summarization_model}seq2seq-config.npy"
+LOCAL_MODEL_ARCHITECTURE = f"{CONFIG.bucket_summarization_model}seq2seq-architecture"
 
 
 class Seq2SeqSummarizer:
@@ -39,7 +44,7 @@ class Seq2SeqSummarizer:
     """
 
     model_name = "seq2seq"
-    hidden_units = 100
+    hidden_units = 256
 
     def __init__(self, config: Seq2SeqConfig):
         """
@@ -77,8 +82,12 @@ class Seq2SeqSummarizer:
         decoder_outputs = decoder_dense(decoder_outputs)
 
         # Horovod: add Horovod Distributed Optimizer.
-        optimizer = RMSprop(1.0 * hvd.size())
-        optimizer = hvd.DistributedOptimizer(optimizer)
+        try:
+            optimizer = RMSprop(1.0 * hvd.size())
+            optimizer = hvd.DistributedOptimizer(optimizer)
+        except ValueError:
+            print("Running outside Horovod.")
+            optimizer = RMSprop(1.0)
 
         model: Model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
         model.compile(
@@ -104,8 +113,7 @@ class Seq2SeqSummarizer:
         :param weight_file_path: path to previous weights
         :return: None
         """
-        if os.path.exists(weight_file_path):
-            self.model.load_weights(weight_file_path)
+        self.model.load_weights(weight_file_path)
 
     def transform_body_text(self, text: List[str]) -> np.ndarray:
         """
@@ -197,36 +205,6 @@ class Seq2SeqSummarizer:
 
                 yield [encoder_body_data_batch, decoder_body_data_batch], decoder_subject_data_batch
 
-    @staticmethod
-    def get_weight_file_path(model_dir_path: str) -> str:
-        """
-        Get the path to the weight file.
-
-        :param model_dir_path: path containing model
-        :return: path to weight file
-        """
-        return f"{model_dir_path}/{Seq2SeqSummarizer.model_name}-weights.h5"
-
-    @staticmethod
-    def get_config_file_path(model_dir_path: str) -> str:
-        """
-        Get the path to the config file.
-
-        :param model_dir_path: path containing model
-        :return: path to config file
-        """
-        return f"{model_dir_path}/{Seq2SeqSummarizer.model_name}-config.npy"
-
-    @staticmethod
-    def get_architecture_file_path(model_dir_path: str) -> str:
-        """
-        Get the path to the architecture file.
-
-        :param model_dir_path: path containing model
-        :return: path to architecture file
-        """
-        return f"{model_dir_path}/{Seq2SeqSummarizer.model_name}-architecture.json"
-
     def fit(
         self,
         body_train: List[str],
@@ -235,7 +213,6 @@ class Seq2SeqSummarizer:
         subject_test: List[str],
         epochs: int,
         batch_size: int,
-        model_dir_path: str,
     ) -> None:
         """
         Begin training of Seq2Seq model, saving trained model in directory provided.
@@ -246,22 +223,26 @@ class Seq2SeqSummarizer:
         :param subject_test: subset of subject data for testing
         :param epochs: number of training epochs
         :param batch_size: dataset batching size
-        :param model_dir_path: where to save model
         :return: None
         """
-        config_file_path: str = Seq2SeqSummarizer.get_config_file_path(model_dir_path)
-        weight_file_path: str = Seq2SeqSummarizer.get_weight_file_path(model_dir_path)
-
         callbacks = [hvd.callbacks.BroadcastGlobalVariablesCallback(0)]
 
         # Horovod: save checkpoints only on worker 0 to prevent other workers from corrupting them.
-        if hvd.rank() == 0:
-            tf.io.gfile.makedirs(model_dir_path)
-            callbacks.append(ModelCheckpoint(weight_file_path))
+        if not CONFIG.is_dev:
+            if hvd.rank() == 0:
+                callbacks.append(ModelCheckpoint(LOCAL_MODEL_WEIGHTS))
+                self.model.save_weights(LOCAL_MODEL_WEIGHTS)
+                self.model.save(LOCAL_MODEL_ARCHITECTURE, save_format="h5")
 
-            np.save(config_file_path, self.config)
-            architecture_file_path: str = Seq2SeqSummarizer.get_architecture_file_path(model_dir_path)
-            open(architecture_file_path, "w").write(self.model.to_json())
+                with open(LOCAL_MODEL_CONFIG, "w") as file:
+                    file.write(str(self.config))
+        else:
+            callbacks.append(ModelCheckpoint(LOCAL_MODEL_WEIGHTS))
+            self.model.save_weights(LOCAL_MODEL_WEIGHTS)
+            self.model.save(LOCAL_MODEL_ARCHITECTURE, save_format="h5")
+
+            with open(LOCAL_MODEL_CONFIG, "w") as file:
+                file.write(str(self.config))
 
         subject_train_array: np.ndarray = self.transform_subject_encoding(subject_train)
         subject_test_array: np.ndarray = self.transform_subject_encoding(subject_test)
@@ -290,8 +271,6 @@ class Seq2SeqSummarizer:
             callbacks=callbacks,
         )
 
-        self.model.save_weights(weight_file_path)
-
     def summarize(self, body_text: str) -> str:
         """
         Summarize input text data.
@@ -316,7 +295,7 @@ class Seq2SeqSummarizer:
 
         states_value: List[np.ndarray] = self.encoder_model.predict(body_sequence_array)
         subject_sequence: np.ndarray = np.zeros((1, 1, self.subject_count))
-        subject_sequence[0, 0, self.subject_word_to_index["START"]] = 1
+        subject_sequence[0, 0, self.subject_word_to_index["START_TAG"]] = 1
 
         subject_text: str = ""
         subject_text_len: int = 0
@@ -329,10 +308,10 @@ class Seq2SeqSummarizer:
             subject_word: str = self.subject_index_to_word[subject_token_index]
             subject_text_len += 1
 
-            if subject_word not in ("START", "END"):
+            if subject_word not in ("START_TAG", "END_TAG"):
                 subject_text += f" {subject_word}"
 
-            if subject_word == "END" or subject_text_len >= self.max_subject_length:
+            if subject_word == "END_TAG" or subject_text_len >= self.max_subject_length:
                 terminated = True
 
             subject_sequence = np.zeros((1, 1, self.subject_count))
@@ -343,6 +322,16 @@ class Seq2SeqSummarizer:
         return subject_text.strip()
 
 
+def join_array_map(text: List[str]) -> str:
+    """
+    Combine list of strings into a string.
+
+    :param text: list of strings
+    :return: concatenated string
+    """
+    return " ".join(map(str, text))
+
+
 def load_data() -> Tuple[List[str], List[str]]:
     """
     Gather data from Google Storage.
@@ -351,27 +340,54 @@ def load_data() -> Tuple[List[str], List[str]]:
     """
     # Either process yesterdays data or a specific date.
     if not CONFIG.process_date:
-        # Use consistent bucket for dev testing.
-        if CONFIG.is_dev:
-            data_source = f"{CONFIG.bucket_parquet}processed_date=2020-04-03/"
-        else:
-            yesterdays_date = datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d")
-            data_source = f"{CONFIG.bucket_parquet}processed_date={yesterdays_date}/"
+        yesterdays_date = datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d")
+        data_source = f"{CONFIG.bucket_parquet}processed_date={yesterdays_date}/"
     else:
         data_source = f"{CONFIG.bucket_parquet}processed_date={CONFIG.process_date}"
 
     parquet_data_frames: List[DataFrame] = []
 
-    parquet_files: List[str] = FILESYSTEM.find(data_source)
-    for parquet_file in parquet_files[1:]:
-        parquet_data_frames.append(pandas.read_parquet(path=f"gs://{parquet_file}", columns=["subject", "body"]))
+    if not CONFIG.is_dev:
+        parquet_files: List[str] = FILESYSTEM.find(data_source)
+        for parquet_file in parquet_files[1:]:
+            parquet_data_frames.append(pandas.read_parquet(path=f"gs://{parquet_file}", columns=["subject", "body"]))
+    else:
+        parquet_data_frames.append(
+            pandas.read_parquet(
+                path=f"{CONFIG.bucket_parquet}parquet/processed_enron.parquet.snappy", columns=["subject", "body"]
+            )
+        )
 
     parquet_data_frame: DataFrame = pandas.concat(parquet_data_frames)
+    data_frame_length: int = len(parquet_data_frame)
 
     # Replace empty strings with nan then drop the rows.
-    parquet_data_frame = parquet_data_frame.replace(r"^\s*$", nan, regex=True).dropna()
-    print(f"Processing: {len(parquet_data_frame)} emails.")
+    with Pool(processes=12) as pool:
+        parquet_data_frame["clean_subject"] = list(
+            tqdm(pool.imap(text_lemmatize_and_lower, parquet_data_frame["subject"]), total=data_frame_length)
+        )
 
+        parquet_data_frame["clean_body"] = list(
+            tqdm(pool.imap(text_lemmatize_and_lower, parquet_data_frame["body"]), total=data_frame_length)
+        )
+
+        parquet_data_frame["processed_subject"] = list(
+            tqdm(pool.imap(join_array_map, parquet_data_frame["clean_subject"]), total=data_frame_length)
+        )
+
+        parquet_data_frame["processed_body"] = list(
+            tqdm(pool.imap(join_array_map, parquet_data_frame["clean_body"]), total=data_frame_length)
+        )
+
+    parquet_data_frame = parquet_data_frame.replace(r"^\s*$", nan, regex=True).dropna()
+
+    parquet_data_frame = parquet_data_frame[parquet_data_frame["subject"].map(len) > 4]
+    parquet_data_frame = parquet_data_frame[parquet_data_frame["subject"].map(len) < 100]
+
+    parquet_data_frame = parquet_data_frame[parquet_data_frame["body"].map(len) > 20]
+    parquet_data_frame = parquet_data_frame[parquet_data_frame["body"].map(len) < 500]
+
+    print(f"Processing: {len(parquet_data_frame)} emails.")
     subject_list: List[str] = parquet_data_frame.get("subject").tolist()
     body_list: List[str] = parquet_data_frame.get("body").tolist()
 
@@ -402,10 +418,13 @@ def main() -> None:
     config: Seq2SeqConfig = fit_text(body_list, subject_list)
     summarizer: Seq2SeqSummarizer = Seq2SeqSummarizer(config)
 
-    if Path(f"{MODELS_DIR}/summarization/seq2seq-config.npy").exists():
-        summarizer.load_weights(
-            weight_file_path=Seq2SeqSummarizer.get_weight_file_path(model_dir_path=f"{MODELS_DIR}/summarization")
-        )
+    if not CONFIG.is_dev:
+        if tf.io.gfile.exists(LOCAL_MODEL_WEIGHTS):
+            summarizer.load_weights(weight_file_path=LOCAL_MODEL_WEIGHTS)
+    else:
+        Path(CONFIG.bucket_summarization_model).mkdir(parents=True, exist_ok=True)
+        if Path(LOCAL_MODEL_WEIGHTS).exists():
+            summarizer.load_weights(weight_file_path=LOCAL_MODEL_WEIGHTS)
 
     body_train, body_test, subject_train, subject_test = train_test_split(body_list, subject_list, test_size=0.2)
 
@@ -416,8 +435,7 @@ def main() -> None:
         body_test=body_test,
         subject_test=subject_test,
         epochs=int(math.ceil(100 / hvd.size())),
-        batch_size=64,
-        model_dir_path=f"{MODELS_DIR}/summarization",
+        batch_size=128,
     )
 
 

@@ -34,11 +34,15 @@ torch = "1.4.0"
 mxnet = "1.6.0"
 matplotlib = "^3.2.1"
 scikit-learn = "^0.22.2"
+fastapi = "^0.54.1"
+uvicorn = "^0.11.3"
+talon = "^1.4.4"
+beautifulsoup4 = "^4.9.0"
+validators = "^0.14.3"
+tqdm = "^4.45.0"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "1.18.2"
-pytest = "5.1.0"
-pytest-cov = "2.7.1"
 
 [tool.poetry.scripts]
 download_spacy_model = "spark_tensorflow_pipeline.download.download_spacy_model:main"
@@ -52,4 +56,4 @@ line_length = 120
 multi_line_output = 3
 combine_as_imports = true
 include_trailing_comma = true
-known_third_party = ["dataclasses", "dotenv", "gcsfs", "horovod", "numpy", "pandas", "scipy", "sklearn", "spacy", "tensorflow", "tensorflow_probability"]
+known_third_party = ["bs4", "dataclasses", "dotenv", "fastapi", "gcsfs", "horovod", "numpy", "pandas", "scipy", "sklearn", "spacy", "talon", "tensorflow", "tensorflow_probability", "tqdm", "uvicorn", "validators"]

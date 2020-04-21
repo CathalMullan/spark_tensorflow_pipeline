@@ -109,6 +109,8 @@ repos:
           --disable=C0330,
           # Allow any number of instance attributes
           --disable=R0902,
+          # Allow any number of branches in code
+          --disable=R0912,
           # Allow any number of public methods in classes
           --disable=R0903,
           # Allow any number of local variables
